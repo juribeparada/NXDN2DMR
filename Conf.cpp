@@ -83,131 +83,132 @@ CConf::~CConf()
 
 bool CConf::read()
 {
-  FILE* fp = ::fopen(m_file.c_str(), "rt");
-  if (fp == NULL) {
-    ::fprintf(stderr, "Couldn't open the .ini file - %s\n", m_file.c_str());
-    return false;
-  }
+	FILE* fp = ::fopen(m_file.c_str(), "rt");
+	if (fp == NULL) {
+		::fprintf(stderr, "Couldn't open the .ini file - %s\n", m_file.c_str());
 
-  SECTION section = SECTION_NONE;
-
-  char buffer[BUFFER_SIZE];
-  while (::fgets(buffer, BUFFER_SIZE, fp) != NULL) {
-    if (buffer[0U] == '#')
-      continue;
-
-    if (buffer[0U] == '[') {
-      if (::strncmp(buffer, "[Info]", 6U) == 0)
-		  section = SECTION_INFO;
-	  else if (::strncmp(buffer, "[NXDN Network]", 14U) == 0)
-        section = SECTION_NXDN_NETWORK;
-	  else if (::strncmp(buffer, "[DMR Network]", 13U) == 0)
-		  section = SECTION_DMR_NETWORK;
-	  else if (::strncmp(buffer, "[DMR Id Lookup]", 15U) == 0)
-		  section = SECTION_DMRID_LOOKUP;
-	  else if (::strncmp(buffer, "[NXDN Id Lookup]", 16U) == 0)
-		  section = SECTION_NXDNID_LOOKUP;
-	  else if (::strncmp(buffer, "[Log]", 5U) == 0)
-		  section = SECTION_LOG;	  
-	  else
-        section = SECTION_NONE;
-
-      continue;
-    }
-
-    char* key   = ::strtok(buffer, " \t=\r\n");
-    if (key == NULL)
-      continue;
-
-    char* value = ::strtok(NULL, "\r\n");
-	if (section == SECTION_NXDN_NETWORK) {
-		if (::strcmp(key, "Callsign") == 0) {
-			// Convert the callsign to upper case
-			for (unsigned int i = 0U; value[i] != 0; i++)
-				value[i] = ::toupper(value[i]);
-			m_callsign = value;
-		} else if (::strcmp(key, "DstAddress") == 0)
-			m_dstAddress = value;
-		else if (::strcmp(key, "DstPort") == 0)
-			m_dstPort = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "LocalAddress") == 0)
-			m_localAddress = value;
-		else if (::strcmp(key, "LocalPort") == 0)
-			m_localPort = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "Daemon") == 0)
-			m_daemon = ::atoi(value) == 1;
-	} else if (section == SECTION_INFO) {
-		if (::strcmp(key, "TXFrequency") == 0)
-			m_txFrequency = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "RXFrequency") == 0)
-			m_rxFrequency = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "Power") == 0)
-			m_power = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "Latitude") == 0)
-			m_latitude = float(::atof(value));
-		else if (::strcmp(key, "Longitude") == 0)
-			m_longitude = float(::atof(value));
-		else if (::strcmp(key, "Height") == 0)
-			m_height = ::atoi(value);
-		else if (::strcmp(key, "Location") == 0)
-			m_location = value;
-		else if (::strcmp(key, "Description") == 0)
-			m_description = value;
-		else if (::strcmp(key, "URL") == 0)
-			m_url = value;
-	} else if (section == SECTION_DMR_NETWORK) {
-		if (::strcmp(key, "Id") == 0)
-			m_dmrId = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "StartupDstId") == 0)
-			m_dmrDstId = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "StartupPC") == 0)
-			m_dmrPC = ::atoi(value) == 1;
-		else if (::strcmp(key, "Address") == 0)
-			m_dmrNetworkAddress = value;
-		else if (::strcmp(key, "Port") == 0)
-			m_dmrNetworkPort = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "Local") == 0)
-			m_dmrNetworkLocal = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "Password") == 0)
-			m_dmrNetworkPassword = value;
-		else if (::strcmp(key, "Options") == 0)
-			m_dmrNetworkOptions = value;
-		else if (::strcmp(key, "Debug") == 0)
-			m_dmrNetworkDebug = ::atoi(value) == 1;
-		else if (::strcmp(key, "JitterEnabled") == 0)
-			m_dmrNetworkJitterEnabled = ::atoi(value) == 1;
-		else if (::strcmp(key, "Jitter") == 0)
-			m_dmrNetworkJitter = (unsigned int)::atoi(value);
-	} else if (section == SECTION_DMRID_LOOKUP) {
-		if (::strcmp(key, "File") == 0)
-			m_dmrIdLookupFile = value;
-		else if (::strcmp(key, "Time") == 0)
-			m_dmrIdLookupTime = (unsigned int)::atoi(value);
-	else if (section == SECTION_NXDNID_LOOKUP) {
-		if (::strcmp(key, "File") == 0)
-			m_nxdnIdLookupFile = value;
-		else if (::strcmp(key, "Time") == 0)
-			m_nxdnIdLookupTime = (unsigned int)::atoi(value);
-	} else if (section == SECTION_LOG) {
-		if (::strcmp(key, "FilePath") == 0)
-			m_logFilePath = value;
-		else if (::strcmp(key, "FileRoot") == 0)
-			m_logFileRoot = value;
-		else if (::strcmp(key, "FileLevel") == 0)
-			m_logFileLevel = (unsigned int)::atoi(value);
-		else if (::strcmp(key, "DisplayLevel") == 0)
-			m_logDisplayLevel = (unsigned int)::atoi(value);
+	return false;
 	}
-  }
 
-  ::fclose(fp);
+	SECTION section = SECTION_NONE;
 
-  return true;
+	char buffer[BUFFER_SIZE];
+	while (::fgets(buffer, BUFFER_SIZE, fp) != NULL) {
+		if (buffer[0U] == '#')
+			continue;
+
+		if (buffer[0U] == '[') {
+			if (::strncmp(buffer, "[Info]", 6U) == 0)
+				section = SECTION_INFO;
+			else if (::strncmp(buffer, "[NXDN Network]", 14U) == 0)
+				section = SECTION_NXDN_NETWORK;
+			else if (::strncmp(buffer, "[DMR Network]", 13U) == 0)
+				section = SECTION_DMR_NETWORK;
+			else if (::strncmp(buffer, "[DMR Id Lookup]", 15U) == 0)
+				section = SECTION_DMRID_LOOKUP;
+			else if (::strncmp(buffer, "[NXDN Id Lookup]", 16U) == 0)
+				section = SECTION_NXDNID_LOOKUP;
+			else if (::strncmp(buffer, "[Log]", 5U) == 0)
+				section = SECTION_LOG;
+			else
+				section = SECTION_NONE;
+
+			continue;
+		}
+
+		char* key   = ::strtok(buffer, " \t=\r\n");
+		if (key == NULL)
+			continue;
+
+		char* value = ::strtok(NULL, "\r\n");
+		if (section == SECTION_NXDN_NETWORK) {
+			if (::strcmp(key, "Callsign") == 0) {
+				// Convert the callsign to upper case
+				for (unsigned int i = 0U; value[i] != 0; i++)
+					value[i] = ::toupper(value[i]);
+			m_callsign = value;
+			} else if (::strcmp(key, "DstAddress") == 0)
+				m_dstAddress = value;
+			else if (::strcmp(key, "DstPort") == 0)
+				m_dstPort = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "LocalAddress") == 0)
+				m_localAddress = value;
+			else if (::strcmp(key, "LocalPort") == 0)
+				m_localPort = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "Daemon") == 0)
+				m_daemon = ::atoi(value) == 1;
+		} else if (section == SECTION_INFO) {
+			if (::strcmp(key, "TXFrequency") == 0)
+				m_txFrequency = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "RXFrequency") == 0)
+				m_rxFrequency = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "Power") == 0)
+				m_power = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "Latitude") == 0)
+				m_latitude = float(::atof(value));
+			else if (::strcmp(key, "Longitude") == 0)
+				m_longitude = float(::atof(value));
+			else if (::strcmp(key, "Height") == 0)
+				m_height = ::atoi(value);
+			else if (::strcmp(key, "Location") == 0)
+				m_location = value;
+			else if (::strcmp(key, "Description") == 0)
+				m_description = value;
+			else if (::strcmp(key, "URL") == 0)
+				m_url = value;
+		} else if (section == SECTION_DMR_NETWORK) {
+			if (::strcmp(key, "Id") == 0)
+				m_dmrId = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "StartupDstId") == 0)
+				m_dmrDstId = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "StartupPC") == 0)
+				m_dmrPC = ::atoi(value) == 1;
+			else if (::strcmp(key, "Address") == 0)
+				m_dmrNetworkAddress = value;
+			else if (::strcmp(key, "Port") == 0)
+				m_dmrNetworkPort = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "Local") == 0)
+				m_dmrNetworkLocal = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "Password") == 0)
+				m_dmrNetworkPassword = value;
+			else if (::strcmp(key, "Options") == 0)
+				m_dmrNetworkOptions = value;
+			else if (::strcmp(key, "Debug") == 0)
+				m_dmrNetworkDebug = ::atoi(value) == 1;
+			else if (::strcmp(key, "JitterEnabled") == 0)
+				m_dmrNetworkJitterEnabled = ::atoi(value) == 1;
+			else if (::strcmp(key, "Jitter") == 0)
+				m_dmrNetworkJitter = (unsigned int)::atoi(value);
+		} else if (section == SECTION_DMRID_LOOKUP) {
+			if (::strcmp(key, "File") == 0)
+				m_dmrIdLookupFile = value;
+			else if (::strcmp(key, "Time") == 0)
+				m_dmrIdLookupTime = (unsigned int)::atoi(value);
+		} else if (section == SECTION_NXDNID_LOOKUP) {
+			if (::strcmp(key, "File") == 0)
+				m_nxdnIdLookupFile = value;
+			else if (::strcmp(key, "Time") == 0)
+				m_nxdnIdLookupTime = (unsigned int)::atoi(value);
+		} else if (section == SECTION_LOG) {
+			if (::strcmp(key, "FilePath") == 0)
+				m_logFilePath = value;
+			else if (::strcmp(key, "FileRoot") == 0)
+				m_logFileRoot = value;
+			else if (::strcmp(key, "FileLevel") == 0)
+				m_logFileLevel = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "DisplayLevel") == 0)
+				m_logDisplayLevel = (unsigned int)::atoi(value);
+		}
+	}
+
+	::fclose(fp);
+
+	return true;
 }
 
 std::string CConf::getCallsign() const
 {
-  return m_callsign;
+	return m_callsign;
 }
 
 std::string CConf::getDstAddress() const
