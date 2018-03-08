@@ -81,13 +81,12 @@ void CModeConv::putNXDN(unsigned char* data)
 	data += NXDN_FSW_LICH_SACCH_LENGTH_BYTES;
 
 	for (unsigned int i = 0U; i < 4U; i++) {
-		data += (9U * i);
-
 		m_DMR.addData(&TAG_DATA, 1U);
 		m_DMR.addData(data, 9U);
 
 		//CUtils::dump(1U, "DMR Voice:", data, 9U);
 
+		data += 9U;
 		m_dmrN += 1U;
 	}
 }
