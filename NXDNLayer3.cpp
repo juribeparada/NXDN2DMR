@@ -62,8 +62,8 @@ void CNXDNLayer3::encode(unsigned char* bytes, unsigned int length, unsigned int
 	assert(bytes != NULL);
 
 	for (unsigned int i = 0U; i < length; i++, offset++) {
-		bool b = READ_BIT1(m_data, i);
-		WRITE_BIT1(bytes, offset, b);
+		bool b = READ_BIT1(m_data, offset);
+		WRITE_BIT1(bytes, i, b);
 	}
 }
 
@@ -72,9 +72,21 @@ unsigned char CNXDNLayer3::getMessageType() const
 	return m_data[0U] & 0x3FU;
 }
 
+void CNXDNLayer3::setMessageType(unsigned char msgType)
+{
+	m_data[0U] &= 0xC0U;
+	m_data[0U] |= msgType & 0x3FU;
+}
+
 unsigned short CNXDNLayer3::getSourceUnitId() const
 {
 	return (m_data[3U] << 8) | m_data[4U];
+}
+
+void CNXDNLayer3::setSourceUnitId(unsigned short src)
+{
+	m_data[3U] = (src >> 8) & 0xFF;
+	m_data[4U] = (src >> 0) & 0xFF ;
 }
 
 unsigned short CNXDNLayer3::getDestinationGroupId() const
@@ -82,14 +94,31 @@ unsigned short CNXDNLayer3::getDestinationGroupId() const
 	return (m_data[5U] << 8) | m_data[6U];
 }
 
+void CNXDNLayer3::setDestinationGroupId(unsigned short dst)
+{
+	m_data[5U] = (dst >> 8) & 0xFF;
+	m_data[6U] = (dst >> 0) & 0xFF ;
+}
+
 bool CNXDNLayer3::getIsGroup() const
 {
 	return (m_data[2U] & 0x80U) != 0x80U;
 }
 
+void CNXDNLayer3::setGroup(bool grp)
+{
+	m_data[2U] |= grp ? 0x80U : 0x00U;
+}
+
 unsigned char CNXDNLayer3::getDataBlocks() const
 {
 	return m_data[8U] & 0x0FU;
+}
+
+void CNXDNLayer3::setDataBlocks(unsigned char blks)
+{
+	m_data[8U] &= 0xF0U;
+	m_data[8U] |= blks & 0x0FU;
 }
 
 void CNXDNLayer3::getData(unsigned char* data) const

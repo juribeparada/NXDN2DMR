@@ -35,6 +35,12 @@ public:
 	bool           getIsGroup() const;
 	unsigned char  getDataBlocks() const;
 
+	void           setMessageType(unsigned char msgType);
+	void           setSourceUnitId(unsigned short src);
+	void           setDestinationGroupId(unsigned short dst);
+	void           setGroup(bool grp);
+	void           setDataBlocks(unsigned char blks);
+
 	void           getData(unsigned char* data) const;
 
 	void           reset();
