@@ -536,7 +536,7 @@ int CNXDN2DMR::run()
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
 				lich.setFCT(NXDN_LICH_USC_SACCH_NS);
 				lich.setOption(NXDN_LICH_STEAL_NONE);
-				lich.setDirection(NXDN_LICH_DIRECTION_OUTBOUND);
+				lich.setDirection(NXDN_LICH_DIRECTION_INBOUND);
 				lich.encode(m_nxdnFrame + 11U);
 
 				CNXDNSACCH sacch;
@@ -544,15 +544,20 @@ int CNXDN2DMR::run()
 				sacch.setStructure(NXDN_SR_SINGLE);
 				sacch.setData(SACCH_IDLE);
 				sacch.encode(m_nxdnFrame + 11U);
-			
+
+				unsigned char layer3data[25U];
 				CNXDNLayer3 layer3;
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_VCALL);
 				layer3.setSourceUnitId(m_nxdnSrc);
 				layer3.setDestinationGroupId(m_dstid & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
+				layer3.getData(layer3data);
 
-				// TODO: fill facch
+				CNXDNFACCH1 facch;
+				facch.setData(layer3data);
+				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS);
+				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS + NXDN_FACCH1_LENGTH_BITS);
 
 				scrambler(m_nxdnFrame + 11U);
 				m_nxdnNetwork->write(m_nxdnFrame);
@@ -575,7 +580,7 @@ int CNXDN2DMR::run()
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
 				lich.setFCT(NXDN_LICH_USC_SACCH_NS);
 				lich.setOption(NXDN_LICH_STEAL_NONE);
-				lich.setDirection(NXDN_LICH_DIRECTION_OUTBOUND);
+				lich.setDirection(NXDN_LICH_DIRECTION_INBOUND);
 				lich.encode(m_nxdnFrame + 11U);
 
 				CNXDNSACCH sacch;
@@ -584,7 +589,19 @@ int CNXDN2DMR::run()
 				sacch.setData(SACCH_IDLE);
 				sacch.encode(m_nxdnFrame + 11U);
 
-				// TODO: fill facch
+				unsigned char layer3data[25U];
+				CNXDNLayer3 layer3;
+				layer3.setMessageType(NXDN_MESSAGE_TYPE_TX_REL);
+				layer3.setSourceUnitId(m_nxdnSrc);
+				layer3.setDestinationGroupId(m_dstid & 0xFFFF);
+				layer3.setGroup(true);
+				layer3.setDataBlocks(0U);
+				layer3.getData(layer3data);
+
+				CNXDNFACCH1 facch;
+				facch.setData(layer3data);
+				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS);
+				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS + NXDN_FACCH1_LENGTH_BITS);
 
 				scrambler(m_nxdnFrame + 11U);
 				m_nxdnNetwork->write(m_nxdnFrame);
@@ -605,7 +622,7 @@ int CNXDN2DMR::run()
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
 				lich.setFCT(NXDN_LICH_USC_SACCH_SS);
 				lich.setOption(NXDN_LICH_STEAL_NONE);
-				lich.setDirection(NXDN_LICH_DIRECTION_OUTBOUND);
+				lich.setDirection(NXDN_LICH_DIRECTION_INBOUND);
 				lich.encode(m_nxdnFrame + 11U);
 
 				CNXDNSACCH sacch;
