@@ -78,8 +78,8 @@ private:
 	unsigned int     m_srcid;
 	unsigned int     m_dstid;
 	bool             m_dmrpc;
-	std::string      m_netSrc;
-	std::string      m_netDst;
+	unsigned int     m_netSrc;
+	unsigned int     m_netDst;
 	unsigned int     m_nxdnSrc;
 	unsigned int     m_nxdnDst;
 	unsigned char    m_dmrLastDT;
@@ -93,6 +93,7 @@ private:
 
 	bool createDMRNetwork();
 	void scrambler(unsigned char* data) const;
+	unsigned int truncID(unsigned int id);
 	
 };
 

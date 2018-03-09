@@ -101,6 +101,8 @@ CNXDN2DMR::CNXDN2DMR(const std::string& configFile) :
 m_callsign(),
 m_conf(configFile),
 m_dmrNetwork(NULL),
+m_netSrc(0U),
+m_netDst(0U),
 m_nxdnSrc(0U),
 m_nxdnDst(0U),
 m_dmrLastDT(0U),
@@ -267,6 +269,7 @@ int CNXDN2DMR::run()
 
 				if (lich.decode(buffer + 11U)) {
 					unsigned char usc = lich.getFCT();
+					unsigned char opt = lich.getOption();
 
 					if (usc == NXDN_LICH_USC_SACCH_NS) {
 						if (end) {
@@ -281,8 +284,10 @@ int CNXDN2DMR::run()
 							m_nxdnFrames = 0U;
 						}
 					} else {
-						m_conv.putNXDN(buffer + 11U);
-						m_nxdnFrames++;
+						if (opt == NXDN_LICH_STEAL_NONE) {
+							m_conv.putNXDN(buffer + 11U);
+							m_nxdnFrames++;
+						}
 					}
 				}
 			}
@@ -446,8 +451,8 @@ int CNXDN2DMR::run()
 		}
 
 		while (m_dmrNetwork->read(tx_dmrdata) > 0U) {
-			unsigned int SrcId = tx_dmrdata.getSrcId();
-			unsigned int DstId = tx_dmrdata.getDstId();
+			m_netSrc = tx_dmrdata.getSrcId();
+			m_netDst = tx_dmrdata.getDstId();
 			
 			FLCO netflco = tx_dmrdata.getFLCO();
 			unsigned char DataType = tx_dmrdata.getDataType();
@@ -466,11 +471,11 @@ int CNXDN2DMR::run()
 				}
 
 				if((DataType == DT_VOICE_LC_HEADER) && (DataType != m_dmrLastDT)) {
-					m_netSrc = m_lookup->findCS(SrcId);
-					m_netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_lookup->findCS(DstId);
+					std::string netSrc = m_lookup->findCS(m_netSrc);
+					std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_lookup->findCS(m_netDst);
 
 					m_conv.putDMRHeader();
-					LogMessage("DMR audio received from %s to %s", m_netSrc.c_str(), m_netDst.c_str());
+					LogMessage("DMR audio received from %s to %s", netSrc.c_str(), netDst.c_str());
 
 					m_dmrinfo = true;
 
@@ -490,10 +495,10 @@ int CNXDN2DMR::run()
 					tx_dmrdata.getData(dmr_frame);
 
 					if (!m_dmrinfo) {
-						m_netSrc = m_lookup->findCS(SrcId);
-						m_netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_lookup->findCS(DstId);
+						std::string netSrc = m_lookup->findCS(m_netSrc);
+						std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_lookup->findCS(m_netDst);
 
-						LogMessage("DMR audio received from %s to %s", m_netSrc.c_str(), m_netDst.c_str());
+						LogMessage("DMR audio received from %s to %s", netSrc.c_str(), netDst.c_str());
 
 						m_dmrinfo = true;
 					}
@@ -517,16 +522,18 @@ int CNXDN2DMR::run()
 
 		if (nxdnWatch.elapsed() > NXDN_FRAME_PER) {
 			unsigned int nxdnFrameType = m_conv.getNXDN(m_nxdnFrame + 11U);
+			unsigned int netSrc = truncID(m_netSrc);
+			unsigned int netDst = truncID(m_netDst);
 
 			if(nxdnFrameType == TAG_HEADER) {
 				nxdn_cnt = 0U;
 
 				::memcpy(m_nxdnFrame + 0U, "NXDND", 5U);
-				m_nxdnFrame[5U] = (m_nxdnSrc >> 8) & 0xFF;
-				m_nxdnFrame[6U] = (m_nxdnSrc >> 0) & 0xFF;
+				m_nxdnFrame[5U] = (netSrc >> 8) & 0xFF;
+				m_nxdnFrame[6U] = (netSrc >> 0) & 0xFF;
 				m_nxdnFrame[7U] = (!m_dmrpc) & 0x01;
-				m_nxdnFrame[8U] = (m_dstid >> 8) & 0xFF;
-				m_nxdnFrame[9U] = (m_dstid >> 0) & 0xFF;
+				m_nxdnFrame[8U] = (netDst >> 8) & 0xFF;
+				m_nxdnFrame[9U] = (netDst >> 0) & 0xFF;
 				m_nxdnFrame[10U] = nxdn_cnt;
 
 				// Add the NXDN Sync
@@ -535,7 +542,7 @@ int CNXDN2DMR::run()
 				CNXDNLICH lich;
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
 				lich.setFCT(NXDN_LICH_USC_SACCH_NS);
-				lich.setOption(NXDN_LICH_STEAL_NONE);
+				lich.setOption(NXDN_LICH_STEAL_FACCH);
 				lich.setDirection(NXDN_LICH_DIRECTION_INBOUND);
 				lich.encode(m_nxdnFrame + 11U);
 
@@ -548,8 +555,8 @@ int CNXDN2DMR::run()
 				unsigned char layer3data[25U];
 				CNXDNLayer3 layer3;
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_VCALL);
-				layer3.setSourceUnitId(m_nxdnSrc);
-				layer3.setDestinationGroupId(m_dstid & 0xFFFF);
+				layer3.setSourceUnitId(netSrc & 0xFFFF);
+				layer3.setDestinationGroupId(netDst & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
 				layer3.getData(layer3data);
@@ -566,11 +573,11 @@ int CNXDN2DMR::run()
 			}
 			else if (nxdnFrameType == TAG_EOT) {
 				::memcpy(m_nxdnFrame + 0U, "NXDND", 5U);
-				m_nxdnFrame[5U] = (m_nxdnSrc >> 8) & 0xFF;
-				m_nxdnFrame[6U] = (m_nxdnSrc >> 0) & 0xFF;
+				m_nxdnFrame[5U] = (netSrc >> 8) & 0xFF;
+				m_nxdnFrame[6U] = (netSrc >> 0) & 0xFF;
 				m_nxdnFrame[7U] = ((!m_dmrpc) & 0x01) | 0x04;
-				m_nxdnFrame[8U] = (m_dstid >> 8) & 0xFF;
-				m_nxdnFrame[9U] = (m_dstid >> 0) & 0xFF;
+				m_nxdnFrame[8U] = (netDst >> 8) & 0xFF;
+				m_nxdnFrame[9U] = (netDst >> 0) & 0xFF;
 				m_nxdnFrame[10U] = nxdn_cnt;
 
 				// Add the NXDN Sync
@@ -579,7 +586,7 @@ int CNXDN2DMR::run()
 				CNXDNLICH lich;
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
 				lich.setFCT(NXDN_LICH_USC_SACCH_NS);
-				lich.setOption(NXDN_LICH_STEAL_NONE);
+				lich.setOption(NXDN_LICH_STEAL_FACCH);
 				lich.setDirection(NXDN_LICH_DIRECTION_INBOUND);
 				lich.encode(m_nxdnFrame + 11U);
 
@@ -592,8 +599,8 @@ int CNXDN2DMR::run()
 				unsigned char layer3data[25U];
 				CNXDNLayer3 layer3;
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_TX_REL);
-				layer3.setSourceUnitId(m_nxdnSrc);
-				layer3.setDestinationGroupId(m_dstid & 0xFFFF);
+				layer3.setSourceUnitId(netSrc & 0xFFFF);
+				layer3.setDestinationGroupId(netDst & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
 				layer3.getData(layer3data);
@@ -605,14 +612,16 @@ int CNXDN2DMR::run()
 
 				scrambler(m_nxdnFrame + 11U);
 				m_nxdnNetwork->write(m_nxdnFrame);
+
+				nxdn_cnt = 0U;
 			}
 			else if (nxdnFrameType == TAG_DATA) {
 				::memcpy(m_nxdnFrame + 0U, "NXDND", 5U);
-				m_nxdnFrame[5U] = (m_nxdnSrc >> 8) & 0xFF;
-				m_nxdnFrame[6U] = (m_nxdnSrc >> 0) & 0xFF;
+				m_nxdnFrame[5U] = (netSrc >> 8) & 0xFF;
+				m_nxdnFrame[6U] = (netSrc >> 0) & 0xFF;
 				m_nxdnFrame[7U] = (!m_dmrpc) & 0x01;
-				m_nxdnFrame[8U] = (m_dstid >> 8) & 0xFF;
-				m_nxdnFrame[9U] = (m_dstid >> 0) & 0xFF;
+				m_nxdnFrame[8U] = (netDst >> 8) & 0xFF;
+				m_nxdnFrame[9U] = (netDst >> 0) & 0xFF;
 				m_nxdnFrame[10U] = nxdn_cnt;
 
 				// Add the NXDN Sync
@@ -630,8 +639,8 @@ int CNXDN2DMR::run()
 				unsigned char message[3U];
 
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_VCALL);
-				layer3.setSourceUnitId(m_nxdnSrc);
-				layer3.setDestinationGroupId(m_dstid & 0xFFFF);
+				layer3.setSourceUnitId(netSrc & 0xFFFF);
+				layer3.setDestinationGroupId(netDst & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
 
@@ -701,6 +710,22 @@ void CNXDN2DMR::scrambler(unsigned char* data) const
 
 	for (unsigned int i = 0U; i < NXDN_FRAME_LENGTH_BYTES; i++)
 		data[i] ^= SCRAMBLER[i];
+}
+
+unsigned int CNXDN2DMR::truncID(unsigned int id)
+{
+	char temp[20];
+
+	snprintf(temp, 8, "%0.7d", id);
+	unsigned int newid = atoi(temp + 2);
+
+	if (newid > 65519)
+		newid = 65519;
+
+	if (newid == 0)
+		newid = 1;
+
+	return newid;
 }
 
 bool CNXDN2DMR::createDMRNetwork()
