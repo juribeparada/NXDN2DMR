@@ -92,7 +92,6 @@ private:
 	bool             m_dmrinfo;
 
 	bool createDMRNetwork();
-	void scrambler(unsigned char* data) const;
 	unsigned int truncID(unsigned int id);
 	
 };

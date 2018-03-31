@@ -32,12 +32,6 @@
 #define DMR_FRAME_PER       55U
 #define NXDN_FRAME_PER      75U
 
-const unsigned char SCRAMBLER[] = {
-	0x00U, 0x00U, 0x00U, 0x82U, 0xA0U, 0x88U, 0x8AU, 0x00U, 0xA2U, 0xA8U, 0x82U, 0x8AU, 0x82U, 0x02U,
-	0x20U, 0x08U, 0x8AU, 0x20U, 0xAAU, 0xA2U, 0x82U, 0x08U, 0x22U, 0x8AU, 0xAAU, 0x08U, 0x28U, 0x88U,
-	0x28U, 0x28U, 0x00U, 0x0AU, 0x02U, 0x82U, 0x20U, 0x28U, 0x82U, 0x2AU, 0xAAU, 0x20U, 0x22U, 0x80U,
-	0xA8U, 0x8AU, 0x08U, 0xA0U, 0xAAU, 0x02U };
-
 #if defined(_WIN32) || defined(_WIN64)
 const char* DEFAULT_INI_FILE = "NXDN2DMR.ini";
 #else
@@ -207,7 +201,7 @@ int CNXDN2DMR::run()
 	std::string localAddress = m_conf.getLocalAddress();
 	unsigned int localPort   = m_conf.getLocalPort();
 
-	m_nxdnNetwork = new CNXDNNetwork(localAddress, localPort, m_callsign, debug);
+	m_nxdnNetwork = new CNXDNNetwork(localAddress, localPort, debug);
 	m_nxdnNetwork->setDestination(dstAddress, dstPort);
 
 	ret = m_nxdnNetwork->open();
@@ -236,7 +230,6 @@ int CNXDN2DMR::run()
 		m_dmrflco = FLCO_GROUP;
 
 	CTimer networkWatchdog(100U, 0U, 1500U);
-	CTimer pollTimer(1000U, 5U);
 
 	std::string name = m_conf.getDescription();
 
@@ -246,7 +239,6 @@ int CNXDN2DMR::run()
 	stopWatch.start();
 	nxdnWatch.start();
 	dmrWatch.start();
-	pollTimer.start();
 
 	unsigned char nxdn_cnt = 0;
 	unsigned char dmr_cnt = 0;
@@ -259,37 +251,39 @@ int CNXDN2DMR::run()
 		CDMRData tx_dmrdata;
 		unsigned int ms = stopWatch.elapsed();
 
-		while (m_nxdnNetwork->read(buffer) > 0U) {
-			if (::memcmp(buffer, "NXDND", 5U) == 0U) {
+		unsigned int len = 0;
+		while ((len = m_nxdnNetwork->read(buffer)) > 0U) {
+			if (::memcmp(buffer, "NXDND", 5U) == 0U && len == 43U) {
 				CNXDNLICH lich;
-				bool end = (buffer[7U] & 0x04) == 0x04;
-				bool grp = (buffer[7U] & 0x01) == 0x01;
+				bool end = (buffer[9U] & 0x04) == 0x04;
+				bool grp = (buffer[9U] & 0x01) == 0x01;
 
-				scrambler(buffer + 11U);
+				lich.setRaw(buffer[0]);
+				unsigned char usc = lich.getFCT();
+				unsigned char opt = lich.getOption();
 
-				if (lich.decode(buffer + 11U)) {
-					unsigned char usc = lich.getFCT();
-					unsigned char opt = lich.getOption();
-
-					if (usc == NXDN_LICH_USC_SACCH_NS) {
-						if (end) {
-							LogMessage("NXDN received end of voice transmission, %.1f seconds", float(m_nxdnFrames) / 12.5F);
-							m_conv.putNXDNEOT();
-							m_nxdnFrames = 0U;
-						} else {
-							m_nxdnSrc = (buffer[5U] << 8) | buffer[6U];
-							m_nxdnDst = (buffer[8U] << 8) | buffer[9U];
-							LogMessage("Received NXDN Header from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
-							m_conv.putNXDNHeader();
-							m_nxdnFrames = 0U;
-						}
+				if (usc == NXDN_LICH_USC_SACCH_NS) {
+					if (end) {
+						LogMessage("NXDN received end of voice transmission, %.1f seconds", float(m_nxdnFrames) / 12.5F);
+						m_conv.putNXDNEOT();
+						m_nxdnFrames = 0U;
 					} else {
-						if (opt == NXDN_LICH_STEAL_NONE) {
-							m_conv.putNXDN(buffer + 11U);
-							m_nxdnFrames++;
-						}
+						m_nxdnSrc = (buffer[5U] << 8) | buffer[6U];
+						m_nxdnDst = (buffer[7U] << 8) | buffer[8U];
+						LogMessage("Received NXDN Header from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
+						m_conv.putNXDNHeader();
+						m_nxdnFrames = 0U;
+					}
+				} else {
+					if (opt == NXDN_LICH_STEAL_NONE) {
+						//m_conv.putNXDN(buffer + 10U);
+						m_nxdnFrames++;
 					}
 				}
+			}
+			else if (::memcmp(buffer, "NXDNP", 5U) == 0 && len == 17U) {
+					// Return the poll
+					m_nxdnNetwork->write(buffer, len);
 			}
 		}
 
@@ -566,8 +560,7 @@ int CNXDN2DMR::run()
 				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS);
 				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS + NXDN_FACCH1_LENGTH_BITS);
 
-				scrambler(m_nxdnFrame + 11U);
-				m_nxdnNetwork->write(m_nxdnFrame);
+				//m_nxdnNetwork->write(m_nxdnFrame);
 
 				nxdnWatch.start();
 			}
@@ -610,8 +603,7 @@ int CNXDN2DMR::run()
 				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS);
 				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS + NXDN_FACCH1_LENGTH_BITS);
 
-				scrambler(m_nxdnFrame + 11U);
-				m_nxdnNetwork->write(m_nxdnFrame);
+				//m_nxdnNetwork->write(m_nxdnFrame);
 
 				nxdn_cnt = 0U;
 			}
@@ -671,8 +663,7 @@ int CNXDN2DMR::run()
 				sacch.encode(m_nxdnFrame + 11U);
 
 				// Send data to MMDVMHost
-				scrambler(m_nxdnFrame + 11U);
-				m_nxdnNetwork->write(m_nxdnFrame);
+				//m_nxdnNetwork->write(m_nxdnFrame);
 				
 				nxdn_cnt++;
 				nxdnWatch.start();
@@ -681,14 +672,7 @@ int CNXDN2DMR::run()
 
 		stopWatch.start();
 
-		m_nxdnNetwork->clock(ms);
 		m_dmrNetwork->clock(ms);
-
-		pollTimer.clock(ms);
-		if (pollTimer.isRunning() && pollTimer.hasExpired()) {
-			m_nxdnNetwork->writePoll();
-			pollTimer.start();
-		}
 
 		if (ms < 5U)
 			CThread::sleep(5U);
@@ -702,14 +686,6 @@ int CNXDN2DMR::run()
 	::LogFinalise();
 
 	return 0;
-}
-
-void CNXDN2DMR::scrambler(unsigned char* data) const
-{
-	assert(data != NULL);
-
-	for (unsigned int i = 0U; i < NXDN_FRAME_LENGTH_BYTES; i++)
-		data[i] ^= SCRAMBLER[i];
 }
 
 unsigned int CNXDN2DMR::truncID(unsigned int id)
