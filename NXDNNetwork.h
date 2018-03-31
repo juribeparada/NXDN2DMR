@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2009-2014,2016,2017 by Jonathan Naylor G4KLX
+ *   Copyright (C) 2009-2014,2016,2017,2018 by Jonathan Naylor G4KLX
  *   Copyright (C) 2018 by Andy Uribe CA6JAU
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -22,44 +22,32 @@
 
 #include "NXDNDefines.h"
 #include "UDPSocket.h"
-#include "RingBuffer.h"
 
 #include <cstdint>
 #include <string>
 
 class CNXDNNetwork {
 public:
-	CNXDNNetwork(const std::string& address, unsigned int port, const std::string& callsign, bool debug);
-	CNXDNNetwork(unsigned int port, const std::string& callsign, bool debug);
+	CNXDNNetwork(const std::string& address, unsigned int port, bool debug);
 	~CNXDNNetwork();
 
 	bool open();
 
-	std::string getCallsign();
-
 	void setDestination(const in_addr& address, unsigned int port);
 	void clearDestination();
 
-	bool write(const unsigned char* data);
-
-	bool writePoll();
-	bool writeUnlink();
+	bool write(const unsigned char* data, unsigned int length);
+	bool write(const unsigned char* data, unsigned short srcId, unsigned short dstId, bool grp);
 
 	unsigned int read(unsigned char* data);
-
-	void clock(unsigned int ms);
 
 	void close();
 
 private:
-	std::string                m_callsign;
 	CUDPSocket                 m_socket;
 	bool                       m_debug;
 	in_addr                    m_address;
 	unsigned int               m_port;
-	unsigned char*             m_poll;
-	unsigned char*             m_unlink;
-	CRingBuffer<unsigned char> m_buffer;
 };
 
 #endif

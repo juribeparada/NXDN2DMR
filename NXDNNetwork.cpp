@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2009-2014,2016,2017 by Jonathan Naylor G4KLX
+ *   Copyright (C) 2009-2014,2016,2017,2018 by Jonathan Naylor G4KLX
  *   Copyright (C) 2018 by Andy Uribe CA6JAU
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -27,62 +27,16 @@
 
 const unsigned int BUFFER_LENGTH = 200U;
 
-CNXDNNetwork::CNXDNNetwork(const std::string& address, unsigned int port, const std::string& callsign, bool debug) :
+CNXDNNetwork::CNXDNNetwork(const std::string& address, unsigned int port, bool debug) :
 m_socket(address, port),
 m_debug(debug),
 m_address(),
-m_port(0U),
-m_poll(NULL),
-m_unlink(NULL),
-m_buffer(1000U, "NXDN Network Buffer")
+m_port(0U)
 {
-	m_poll = new unsigned char[15U];
-	::memcpy(m_poll + 0U, "NXDNP", 5U);
-
-	m_unlink = new unsigned char[15U];
-	::memcpy(m_unlink + 0U, "NXDNU", 5U);
-
-	m_callsign = callsign;
-	m_callsign.resize(10U, ' ');
-
-	for (unsigned int i = 0U; i < 10U; i++) {
-		m_poll[i + 5U]   = m_callsign.at(i);
-		m_unlink[i + 5U] = m_callsign.at(i);
-	}
-}
-
-CNXDNNetwork::CNXDNNetwork(unsigned int port, const std::string& callsign, bool debug) :
-m_socket(port),
-m_debug(debug),
-m_address(),
-m_port(0U),
-m_poll(NULL),
-m_unlink(NULL),
-m_buffer(1000U, "NXDN Network Buffer")
-{
-	m_poll = new unsigned char[15U];
-	::memcpy(m_poll + 0U, "NXDNP", 5U);
-
-	m_unlink = new unsigned char[15U];
-	::memcpy(m_unlink + 0U, "NXDNU", 5U);
-
-	m_callsign = callsign;
-	m_callsign.resize(10U, ' ');
-
-	for (unsigned int i = 0U; i < 10U; i++) {
-		m_poll[i + 5U]   = m_callsign.at(i);
-		m_unlink[i + 5U] = m_callsign.at(i);
-	}
 }
 
 CNXDNNetwork::~CNXDNNetwork()
 {
-	delete[] m_poll;
-}
-
-std::string CNXDNNetwork::getCallsign()
-{
-	return m_callsign;
 }
 
 bool CNXDNNetwork::open()
@@ -104,71 +58,71 @@ void CNXDNNetwork::clearDestination()
 	m_port           = 0U;
 }
 
-bool CNXDNNetwork::write(const unsigned char* data)
+bool CNXDNNetwork::write(const unsigned char* data, unsigned int length)
+{
+	assert(data != NULL);
+	assert(length > 0U);
+
+	if (m_debug)
+		CUtils::dump(1U, "NXDN Network Data Sent", data, length);
+
+	return m_socket.write(data, length, m_address, m_port);
+}
+
+bool CNXDNNetwork::write(const unsigned char* data, unsigned short srcId, unsigned short dstId, bool grp)
 {
 	assert(data != NULL);
 
-	if (m_port == 0U)
-		return true;
+	unsigned char buffer[50U];
+
+	buffer[0U] = 'N';
+	buffer[1U] = 'X';
+	buffer[2U] = 'D';
+	buffer[3U] = 'N';
+	buffer[4U] = 'D';
+
+	buffer[5U] = (srcId >> 8) & 0xFFU;
+	buffer[6U] = (srcId >> 0) & 0xFFU;
+
+	buffer[7U] = (dstId >> 8) & 0xFFU;
+	buffer[8U] = (dstId >> 0) & 0xFFU;
+
+	buffer[9U] = 0x00U;
+	buffer[9U] |= grp ? 0x01U : 0x00U;
+
+	if (data[0U] == 0x81U || data[0U] == 0x83U) {
+		buffer[9U] |= data[5U] == 0x01U ? 0x04U : 0x00U;
+		buffer[9U] |= data[5U] == 0x08U ? 0x08U : 0x00U;
+	}
+
+	::memcpy(buffer + 10U, data, 33U);
 
 	if (m_debug)
-		CUtils::dump(1U, "NXDN Network Data Sent", data, 59U);
+		CUtils::dump(1U, "NXDN Network Data Sent", buffer, 43U);
 
-	return m_socket.write(data, 59U, m_address, m_port);
-}
-
-bool CNXDNNetwork::writePoll()
-{
-	if (m_port == 0U)
-		return true;
-
-	return m_socket.write(m_poll, 15U, m_address, m_port);
-}
-
-bool CNXDNNetwork::writeUnlink()
-{
-	if (m_port == 0U)
-		return true;
-
-	return m_socket.write(m_unlink, 15U, m_address, m_port);
-}
-
-void CNXDNNetwork::clock(unsigned int ms)
-{
-	if (m_port == 0U)
-		return;
-
-	unsigned char buffer[BUFFER_LENGTH];
-
-	in_addr address;
-	unsigned int port;
-	int length = m_socket.read(buffer, BUFFER_LENGTH, address, port);
-	if (length <= 0)
-		return;
-
-	if (address.s_addr != m_address.s_addr || port != m_port)
-		return;
-
-	if (m_debug)
-		CUtils::dump(1U, "NXDN Network Data Received", buffer, length);
-
-	unsigned char len = length;
-	m_buffer.addData(&len, 1U);
-
-	m_buffer.addData(buffer, length);
+	return m_socket.write(buffer, 43U, m_address, m_port);
 }
 
 unsigned int CNXDNNetwork::read(unsigned char* data)
 {
 	assert(data != NULL);
 
-	if (m_buffer.isEmpty())
+	in_addr address;
+	unsigned int port;
+
+	int len = m_socket.read(data, BUFFER_LENGTH, address, port);
+	if (len <= 0)
 		return 0U;
 
-	unsigned char len = 0U;
-	m_buffer.getData(&len, 1U);
+	// Invalid packet type?
+	if (::memcmp(data, "NXDN", 4U) != 0)
+		return 0U;
 
-	m_buffer.getData(data, len);
+	if (len != 17 && len != 43)
+		return 0U;
+
+	if (m_debug)
+		CUtils::dump(1U, "NXDN Network Data Received", data, len);
 
 	return len;
 }
