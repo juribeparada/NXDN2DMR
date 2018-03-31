@@ -77,6 +77,7 @@ private:
 	unsigned int     m_defsrcid;
 	unsigned int     m_srcid;
 	unsigned int     m_dstid;
+	bool             m_dmrpc;
 	unsigned int     m_netSrc;
 	unsigned int     m_netDst;
 	unsigned int     m_nxdnSrc;
@@ -89,7 +90,6 @@ private:
 	CDMREmbeddedData m_EmbeddedLC;
 	FLCO             m_dmrflco;
 	bool             m_dmrinfo;
-	bool             m_nxdninfo;
 
 	bool createDMRNetwork();
 	void scrambler(unsigned char* data) const;

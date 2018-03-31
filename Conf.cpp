@@ -56,6 +56,8 @@ m_location(),
 m_description(),
 m_url(),
 m_dmrId(0U),
+m_dmrDstId(9990U),
+m_dmrPC(true),
 m_dmrNetworkAddress(),
 m_dmrNetworkPort(0U),
 m_dmrNetworkLocal(0U),
@@ -157,6 +159,10 @@ bool CConf::read()
 		} else if (section == SECTION_DMR_NETWORK) {
 			if (::strcmp(key, "Id") == 0)
 				m_dmrId = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "StartupDstId") == 0)
+				m_dmrDstId = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "StartupPC") == 0)
+				m_dmrPC = ::atoi(value) == 1;
 			else if (::strcmp(key, "Address") == 0)
 				m_dmrNetworkAddress = value;
 			else if (::strcmp(key, "Port") == 0)
@@ -278,6 +284,16 @@ std::string CConf::getURL() const
 unsigned int CConf::getDMRId() const
 {
 	return m_dmrId;
+}
+
+unsigned int CConf::getDMRDstId() const
+{
+	return m_dmrDstId;
+}
+
+bool CConf::getDMRPC() const
+{
+	return m_dmrPC;
 }
 
 std::string CConf::getDMRNetworkAddress() const

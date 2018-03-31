@@ -108,9 +108,7 @@ m_nxdnDst(0U),
 m_dmrLastDT(0U),
 m_dmrFrames(0U),
 m_nxdnFrames(0U),
-m_dmrflco(FLCO_GROUP),
-m_dmrinfo(false),
-m_nxdninfo(false)
+m_dmrinfo(false)
 {
 	::memset(m_nxdnFrame, 0U, 200U);
 	::memset(m_dmrFrame, 0U, 50U);
@@ -232,6 +230,11 @@ int CNXDN2DMR::run()
 	m_lookup = new CDMRLookup(lookupFile, reloadTime);
 	m_lookup->read();
 
+	if (m_dmrpc)
+		m_dmrflco = FLCO_USER_USER;
+	else
+		m_dmrflco = FLCO_GROUP;
+
 	CTimer networkWatchdog(100U, 0U, 1500U);
 	CTimer pollTimer(1000U, 5U);
 
@@ -273,41 +276,15 @@ int CNXDN2DMR::run()
 							LogMessage("NXDN received end of voice transmission, %.1f seconds", float(m_nxdnFrames) / 12.5F);
 							m_conv.putNXDNEOT();
 							m_nxdnFrames = 0U;
-							m_nxdninfo = false;
 						} else {
 							m_nxdnSrc = (buffer[5U] << 8) | buffer[6U];
 							m_nxdnDst = (buffer[8U] << 8) | buffer[9U];
-
-							m_dstid = m_nxdnDst;
-
-							if (grp)
-								m_dmrflco = FLCO_GROUP;
-							else
-								m_dmrflco = FLCO_USER_USER;
-
-							LogMessage("Received NXDN audio from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
-
+							LogMessage("Received NXDN Header from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
 							m_conv.putNXDNHeader();
 							m_nxdnFrames = 0U;
-							m_nxdninfo = true;
 						}
 					} else {
 						if (opt == NXDN_LICH_STEAL_NONE) {
-							if (!m_nxdninfo) {
-								m_nxdnSrc = (buffer[5U] << 8) | buffer[6U];
-								m_nxdnDst = (buffer[8U] << 8) | buffer[9U];
-
-								m_dstid = m_nxdnDst;
-
-								if (grp)
-									m_dmrflco = FLCO_GROUP;
-								else
-									m_dmrflco = FLCO_USER_USER;
-
-								LogMessage("Received NXDN audio from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
-								m_nxdninfo = true;
-							}
-
 							m_conv.putNXDN(buffer + 11U);
 							m_nxdnFrames++;
 						}
@@ -554,7 +531,7 @@ int CNXDN2DMR::run()
 				::memcpy(m_nxdnFrame + 0U, "NXDND", 5U);
 				m_nxdnFrame[5U] = (netSrc >> 8) & 0xFF;
 				m_nxdnFrame[6U] = (netSrc >> 0) & 0xFF;
-				m_nxdnFrame[7U] = 0x01;
+				m_nxdnFrame[7U] = (!m_dmrpc) & 0x01;
 				m_nxdnFrame[8U] = (netDst >> 8) & 0xFF;
 				m_nxdnFrame[9U] = (netDst >> 0) & 0xFF;
 				m_nxdnFrame[10U] = nxdn_cnt;
@@ -598,7 +575,7 @@ int CNXDN2DMR::run()
 				::memcpy(m_nxdnFrame + 0U, "NXDND", 5U);
 				m_nxdnFrame[5U] = (netSrc >> 8) & 0xFF;
 				m_nxdnFrame[6U] = (netSrc >> 0) & 0xFF;
-				m_nxdnFrame[7U] = 0x05;
+				m_nxdnFrame[7U] = ((!m_dmrpc) & 0x01) | 0x04;
 				m_nxdnFrame[8U] = (netDst >> 8) & 0xFF;
 				m_nxdnFrame[9U] = (netDst >> 0) & 0xFF;
 				m_nxdnFrame[10U] = nxdn_cnt;
@@ -642,7 +619,7 @@ int CNXDN2DMR::run()
 				::memcpy(m_nxdnFrame + 0U, "NXDND", 5U);
 				m_nxdnFrame[5U] = (netSrc >> 8) & 0xFF;
 				m_nxdnFrame[6U] = (netSrc >> 0) & 0xFF;
-				m_nxdnFrame[7U] = 0x01;
+				m_nxdnFrame[7U] = (!m_dmrpc) & 0x01;
 				m_nxdnFrame[8U] = (netDst >> 8) & 0xFF;
 				m_nxdnFrame[9U] = (netDst >> 0) & 0xFF;
 				m_nxdnFrame[10U] = nxdn_cnt;
@@ -766,6 +743,8 @@ bool CNXDN2DMR::createDMRNetwork()
 
 	m_srcHS = m_conf.getDMRId();
 	m_colorcode = 1U;
+	m_dstid = m_conf.getDMRDstId();
+	m_dmrpc = m_conf.getDMRPC();
 
 	if (m_srcHS > 99999999U)
 		m_defsrcid = m_srcHS / 100U;
@@ -779,6 +758,7 @@ bool CNXDN2DMR::createDMRNetwork()
 	LogMessage("DMR Network Parameters");
 	LogMessage("    ID: %u", m_srcHS);
 	LogMessage("    Default SrcID: %u", m_defsrcid);
+	LogMessage("    Startup DstID: %s%u", m_dmrpc ? "" : "TG ", m_dstid);
 	LogMessage("    Address: %s", address.c_str());
 	LogMessage("    Port: %u", port);
 	if (local > 0U)
