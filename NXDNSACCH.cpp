@@ -166,6 +166,15 @@ void CNXDNSACCH::getData(unsigned char* data) const
 	}
 }
 
+void CNXDNSACCH::getRaw(unsigned char* data) const
+{
+	assert(data != NULL);
+
+	::memcpy(data, m_data, 4U);
+
+	CNXDNCRC::encodeCRC6(data, 26U);
+}
+
 void CNXDNSACCH::setRAN(unsigned char ran)
 {
 	m_data[0U] &= 0xC0U;
@@ -187,6 +196,13 @@ void CNXDNSACCH::setData(const unsigned char* data)
 		bool b = READ_BIT1(data, i);
 		WRITE_BIT1(m_data, offset, b);
 	}
+}
+
+void CNXDNSACCH::setRaw(const unsigned char* data)
+{
+	assert(data != NULL);
+
+	::memcpy(m_data, data, 4U);
 }
 
 CNXDNSACCH& CNXDNSACCH::operator=(const CNXDNSACCH& sacch)
