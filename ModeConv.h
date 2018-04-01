@@ -1,5 +1,5 @@
 /*
- *   Copyright (C) 2010,2014,2016 by Jonathan Naylor G4KLX
+ *   Copyright (C) 2010,2014,2016,2018 by Jonathan Naylor G4KLX
  *   Copyright (C) 2018 by Andy Uribe CA6JAU
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -44,7 +44,8 @@ private:
 	unsigned int m_dmrN;
 	CRingBuffer<unsigned char> m_NXDN;
 	CRingBuffer<unsigned char> m_DMR;
-
+	void encode(const unsigned char* in, unsigned char* out, unsigned int offset) const;
+	void decode(const unsigned char* in, unsigned char* out, unsigned int offset) const;
 };
 
 #endif
