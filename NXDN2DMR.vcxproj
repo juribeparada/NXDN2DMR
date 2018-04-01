@@ -154,6 +154,7 @@
     <ClCompile Include="DMRNetwork.cpp" />
     <ClCompile Include="DMRSlotType.cpp" />
     <ClCompile Include="Golay2087.cpp" />
+    <ClCompile Include="Golay24128.cpp" />
     <ClCompile Include="Hamming.cpp" />
     <ClCompile Include="Log.cpp" />
     <ClCompile Include="ModeConv.cpp" />
@@ -161,7 +162,6 @@
     <ClCompile Include="NXDN2DMR.cpp" />
     <ClCompile Include="NXDNConvolution.cpp" />
     <ClCompile Include="NXDNCRC.cpp" />
-    <ClCompile Include="NXDNFACCH1.cpp" />
     <ClCompile Include="NXDNLayer3.cpp" />
     <ClCompile Include="NXDNLICH.cpp" />
     <ClCompile Include="NXDNLookup.cpp" />
@@ -193,6 +193,7 @@
     <ClInclude Include="DMRNetwork.h" />
     <ClInclude Include="DMRSlotType.h" />
     <ClInclude Include="Golay2087.h" />
+    <ClInclude Include="Golay24128.h" />
     <ClInclude Include="Hamming.h" />
     <ClInclude Include="Log.h" />
     <ClInclude Include="ModeConv.h" />
@@ -201,7 +202,6 @@
     <ClInclude Include="NXDNConvolution.h" />
     <ClInclude Include="NXDNCRC.h" />
     <ClInclude Include="NXDNDefines.h" />
-    <ClInclude Include="NXDNFACCH1.h" />
     <ClInclude Include="NXDNLayer3.h" />
     <ClInclude Include="NXDNLICH.h" />
     <ClInclude Include="NXDNLookup.h" />

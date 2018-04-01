@@ -54,6 +54,9 @@
     <ClCompile Include="Golay2087.cpp">
       <Filter>Archivos de código fuente</Filter>
     </ClCompile>
+    <ClCompile Include="Golay24128.cpp">
+      <Filter>Archivos de código fuente</Filter>
+    </ClCompile>
     <ClCompile Include="Hamming.cpp">
       <Filter>Archivos de código fuente</Filter>
     </ClCompile>
@@ -73,9 +76,6 @@
       <Filter>Archivos de código fuente</Filter>
     </ClCompile>
     <ClCompile Include="NXDNCRC.cpp">
-      <Filter>Archivos de código fuente</Filter>
-    </ClCompile>
-    <ClCompile Include="NXDNFACCH1.cpp">
       <Filter>Archivos de código fuente</Filter>
     </ClCompile>
     <ClCompile Include="NXDNLayer3.cpp">
@@ -167,6 +167,9 @@
     <ClInclude Include="Golay2087.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
+    <ClInclude Include="Golay24128.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
     <ClInclude Include="Hamming.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
@@ -189,9 +192,6 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="NXDNDefines.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
-    <ClInclude Include="NXDNFACCH1.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="NXDNLayer3.h">

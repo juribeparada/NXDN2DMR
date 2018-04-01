@@ -6,7 +6,7 @@ LDFLAGS = -g
 
 OBJECTS = 	BPTC19696.o Conf.o CRC.o DelayBuffer.cpp DMRData.o DMREMB.o DMREmbeddedData.o \
 			DMRFullLC.o DMRLC.o DMRLookup.o DMRNetwork.o DMRSlotType.o  Golay2087.o \
-			Hamming.o Log.o ModeConv.o Mutex.o NXDNConvolution.o NXDNCRC.o NXDNFACCH1.o \
+			Golay24128.o Hamming.o Log.o ModeConv.o Mutex.o NXDNConvolution.o NXDNCRC.o \
 			NXDNLayer3.o NXDNLICH.o NXDNLookup.o NXDNSACCH.o NXDN2DMR.o NXDNNetwork.o \
 			QR1676.o RS129.o SHA256.o StopWatch.o Sync.o Thread.o Timer.o UDPSocket.o \
 			Utils.o 
