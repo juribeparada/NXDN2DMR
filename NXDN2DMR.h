@@ -31,7 +31,6 @@
 #include "DMRLookup.h"
 #include "NXDNConvolution.h"
 #include "NXDNCRC.h"
-#include "NXDNFACCH1.h"
 #include "NXDNLayer3.h"
 #include "NXDNLICH.h"
 #include "NXDNLookup.h"
@@ -90,6 +89,7 @@ private:
 	CDMREmbeddedData m_EmbeddedLC;
 	FLCO             m_dmrflco;
 	bool             m_dmrinfo;
+	bool             m_nxdninfo;
 
 	bool createDMRNetwork();
 	unsigned int truncID(unsigned int id);

@@ -32,6 +32,8 @@
 #define DMR_FRAME_PER       55U
 #define NXDN_FRAME_PER      75U
 
+#define NXDNGW_DSTID        20U
+
 #if defined(_WIN32) || defined(_WIN64)
 const char* DEFAULT_INI_FILE = "NXDN2DMR.ini";
 #else
@@ -255,10 +257,12 @@ int CNXDN2DMR::run()
 		while ((len = m_nxdnNetwork->read(buffer)) > 0U) {
 			if (::memcmp(buffer, "NXDND", 5U) == 0U && len == 43U) {
 				CNXDNLICH lich;
-				bool end = (buffer[9U] & 0x04) == 0x04;
+				m_nxdnSrc = (buffer[5U] << 8) | buffer[6U];
+				m_nxdnDst = (buffer[7U] << 8) | buffer[8U];
+				bool end = (buffer[9U] & 0x08) == 0x08;
 				bool grp = (buffer[9U] & 0x01) == 0x01;
 
-				lich.setRaw(buffer[0]);
+				lich.setRaw(buffer[10U]);
 				unsigned char usc = lich.getFCT();
 				unsigned char opt = lich.getOption();
 
@@ -267,16 +271,22 @@ int CNXDN2DMR::run()
 						LogMessage("NXDN received end of voice transmission, %.1f seconds", float(m_nxdnFrames) / 12.5F);
 						m_conv.putNXDNEOT();
 						m_nxdnFrames = 0U;
+						m_nxdninfo = false;
 					} else {
-						m_nxdnSrc = (buffer[5U] << 8) | buffer[6U];
-						m_nxdnDst = (buffer[7U] << 8) | buffer[8U];
-						LogMessage("Received NXDN Header from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
+						LogMessage("Received NXDN audio from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
+
 						m_conv.putNXDNHeader();
 						m_nxdnFrames = 0U;
+						m_nxdninfo = true;
 					}
 				} else {
 					if (opt == NXDN_LICH_STEAL_NONE) {
-						//m_conv.putNXDN(buffer + 10U);
+						if (!m_nxdninfo) {
+							LogMessage("Received NXDN audio from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
+							m_nxdninfo = true;
+						}
+
+						m_conv.putNXDN(buffer + 10U);
 						m_nxdnFrames++;
 					}
 				}
@@ -515,36 +525,25 @@ int CNXDN2DMR::run()
 		}
 
 		if (nxdnWatch.elapsed() > NXDN_FRAME_PER) {
-			unsigned int nxdnFrameType = m_conv.getNXDN(m_nxdnFrame + 11U);
+			unsigned int nxdnFrameType = m_conv.getNXDN(m_nxdnFrame);
 			unsigned int netSrc = truncID(m_netSrc);
 			unsigned int netDst = truncID(m_netDst);
 
 			if(nxdnFrameType == TAG_HEADER) {
 				nxdn_cnt = 0U;
 
-				::memcpy(m_nxdnFrame + 0U, "NXDND", 5U);
-				m_nxdnFrame[5U] = (netSrc >> 8) & 0xFF;
-				m_nxdnFrame[6U] = (netSrc >> 0) & 0xFF;
-				m_nxdnFrame[7U] = (!m_dmrpc) & 0x01;
-				m_nxdnFrame[8U] = (netDst >> 8) & 0xFF;
-				m_nxdnFrame[9U] = (netDst >> 0) & 0xFF;
-				m_nxdnFrame[10U] = nxdn_cnt;
-
-				// Add the NXDN Sync
-				CSync::addNXDNSync(m_nxdnFrame + 11U);
-
 				CNXDNLICH lich;
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
 				lich.setFCT(NXDN_LICH_USC_SACCH_NS);
 				lich.setOption(NXDN_LICH_STEAL_FACCH);
 				lich.setDirection(NXDN_LICH_DIRECTION_INBOUND);
-				lich.encode(m_nxdnFrame + 11U);
+				m_nxdnFrame[0U] = lich.getRaw();
 
 				CNXDNSACCH sacch;
 				sacch.setRAN(0x01);
 				sacch.setStructure(NXDN_SR_SINGLE);
 				sacch.setData(SACCH_IDLE);
-				sacch.encode(m_nxdnFrame + 11U);
+				sacch.getRaw(m_nxdnFrame + 1U);
 
 				unsigned char layer3data[25U];
 				CNXDNLayer3 layer3;
@@ -555,39 +554,26 @@ int CNXDN2DMR::run()
 				layer3.setDataBlocks(0U);
 				layer3.getData(layer3data);
 
-				CNXDNFACCH1 facch;
-				facch.setData(layer3data);
-				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS);
-				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS + NXDN_FACCH1_LENGTH_BITS);
+				::memcpy(m_nxdnFrame + 5U, layer3data, 14U);
+				::memcpy(m_nxdnFrame + 5U + 14U, layer3data, 14U);
 
-				//m_nxdnNetwork->write(m_nxdnFrame);
+				m_nxdnNetwork->write(m_nxdnFrame, netSrc, NXDNGW_DSTID, true);
 
 				nxdnWatch.start();
 			}
 			else if (nxdnFrameType == TAG_EOT) {
-				::memcpy(m_nxdnFrame + 0U, "NXDND", 5U);
-				m_nxdnFrame[5U] = (netSrc >> 8) & 0xFF;
-				m_nxdnFrame[6U] = (netSrc >> 0) & 0xFF;
-				m_nxdnFrame[7U] = ((!m_dmrpc) & 0x01) | 0x04;
-				m_nxdnFrame[8U] = (netDst >> 8) & 0xFF;
-				m_nxdnFrame[9U] = (netDst >> 0) & 0xFF;
-				m_nxdnFrame[10U] = nxdn_cnt;
-
-				// Add the NXDN Sync
-				CSync::addNXDNSync(m_nxdnFrame + 11U);
-
 				CNXDNLICH lich;
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
 				lich.setFCT(NXDN_LICH_USC_SACCH_NS);
 				lich.setOption(NXDN_LICH_STEAL_FACCH);
 				lich.setDirection(NXDN_LICH_DIRECTION_INBOUND);
-				lich.encode(m_nxdnFrame + 11U);
+				m_nxdnFrame[0U] = lich.getRaw();
 
 				CNXDNSACCH sacch;
 				sacch.setRAN(0x01);
 				sacch.setStructure(NXDN_SR_SINGLE);
 				sacch.setData(SACCH_IDLE);
-				sacch.encode(m_nxdnFrame + 11U);
+				sacch.getRaw(m_nxdnFrame + 1U);
 
 				unsigned char layer3data[25U];
 				CNXDNLayer3 layer3;
@@ -598,33 +584,20 @@ int CNXDN2DMR::run()
 				layer3.setDataBlocks(0U);
 				layer3.getData(layer3data);
 
-				CNXDNFACCH1 facch;
-				facch.setData(layer3data);
-				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS);
-				facch.encode(m_nxdnFrame + 11U, NXDN_FSW_LENGTH_BITS + NXDN_LICH_LENGTH_BITS + NXDN_SACCH_LENGTH_BITS + NXDN_FACCH1_LENGTH_BITS);
+				::memcpy(m_nxdnFrame + 5U, layer3data, 14U);
+				::memcpy(m_nxdnFrame + 5U + 14U, layer3data, 14U);
 
-				//m_nxdnNetwork->write(m_nxdnFrame);
+				m_nxdnNetwork->write(m_nxdnFrame, netSrc, NXDNGW_DSTID, true);
 
 				nxdn_cnt = 0U;
 			}
 			else if (nxdnFrameType == TAG_DATA) {
-				::memcpy(m_nxdnFrame + 0U, "NXDND", 5U);
-				m_nxdnFrame[5U] = (netSrc >> 8) & 0xFF;
-				m_nxdnFrame[6U] = (netSrc >> 0) & 0xFF;
-				m_nxdnFrame[7U] = (!m_dmrpc) & 0x01;
-				m_nxdnFrame[8U] = (netDst >> 8) & 0xFF;
-				m_nxdnFrame[9U] = (netDst >> 0) & 0xFF;
-				m_nxdnFrame[10U] = nxdn_cnt;
-
-				// Add the NXDN Sync
-				CSync::addNXDNSync(m_nxdnFrame + 11U);
-
 				CNXDNLICH lich;
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
 				lich.setFCT(NXDN_LICH_USC_SACCH_SS);
 				lich.setOption(NXDN_LICH_STEAL_NONE);
 				lich.setDirection(NXDN_LICH_DIRECTION_INBOUND);
-				lich.encode(m_nxdnFrame + 11U);
+				m_nxdnFrame[0U] = lich.getRaw();
 
 				CNXDNSACCH sacch;
 				CNXDNLayer3 layer3;
@@ -660,10 +633,10 @@ int CNXDN2DMR::run()
 				}
 
 				sacch.setRAN(0x01);
-				sacch.encode(m_nxdnFrame + 11U);
+				sacch.getRaw(m_nxdnFrame + 1U);
 
 				// Send data to MMDVMHost
-				//m_nxdnNetwork->write(m_nxdnFrame);
+				m_nxdnNetwork->write(m_nxdnFrame, netSrc, NXDNGW_DSTID, true);
 				
 				nxdn_cnt++;
 				nxdnWatch.start();
