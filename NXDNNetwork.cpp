@@ -27,12 +27,14 @@
 
 const unsigned int BUFFER_LENGTH = 200U;
 
-CNXDNNetwork::CNXDNNetwork(const std::string& address, unsigned int port, bool debug) :
+CNXDNNetwork::CNXDNNetwork(const std::string& address, unsigned int port, const std::string& callsign, bool debug) :
 m_socket(address, port),
+m_callsign(callsign),
 m_debug(debug),
 m_address(),
 m_port(0U)
 {
+	m_callsign.resize(10U, ' ');
 }
 
 CNXDNNetwork::~CNXDNNetwork()
@@ -125,6 +127,50 @@ unsigned int CNXDNNetwork::read(unsigned char* data)
 		CUtils::dump(1U, "NXDN Network Data Received", data, len);
 
 	return len;
+}
+
+bool CNXDNNetwork::writePoll(unsigned short tg)
+{
+	unsigned char data[20U];
+
+	data[0U] = 'N';
+	data[1U] = 'X';
+	data[2U] = 'D';
+	data[3U] = 'N';
+	data[4U] = 'P';
+
+	for (unsigned int i = 0U; i < 10U; i++)
+		data[i + 5U] = m_callsign.at(i);
+
+	data[15U] = (tg >> 8) & 0xFFU;
+	data[16U] = (tg >> 0) & 0xFFU;
+
+	if (m_debug)
+		CUtils::dump(1U, "NXDN Network Poll Sent", data, 17U);
+
+	return m_socket.write(data, 17U, m_address, m_port);
+}
+
+bool CNXDNNetwork::writeUnlink(unsigned short tg)
+{
+	unsigned char data[20U];
+
+	data[0U] = 'N';
+	data[1U] = 'X';
+	data[2U] = 'D';
+	data[3U] = 'N';
+	data[4U] = 'U';
+
+	for (unsigned int i = 0U; i < 10U; i++)
+		data[i + 5U] = m_callsign.at(i);
+
+	data[15U] = (tg >> 8) & 0xFFU;
+	data[16U] = (tg >> 0) & 0xFFU;
+
+	if (m_debug)
+		CUtils::dump(1U, "NXDN Network Unlink Sent", data, 17U);
+
+	return m_socket.write(data, 17U, m_address, m_port);
 }
 
 void CNXDNNetwork::close()

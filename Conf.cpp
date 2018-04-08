@@ -1,7 +1,6 @@
 /*
  *   Copyright (C) 2015,2016,2017 by Jonathan Naylor G4KLX
  *   Copyright (C) 2018 by Andy Uribe CA6JAU
- *   Copyright (C) 2018 by Manuel Sanchez EA7EE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -41,6 +40,7 @@ enum SECTION {
 CConf::CConf(const std::string& file) :
 m_file(file),
 m_callsign(),
+m_tg(20U),
 m_dstAddress(),
 m_dstPort(0U),
 m_localAddress(),
@@ -137,7 +137,9 @@ bool CConf::read()
 				for (unsigned int i = 0U; value[i] != 0; i++)
 					value[i] = ::toupper(value[i]);
 			m_callsign = value;
-			} else if (::strcmp(key, "DstAddress") == 0)
+			} else if (::strcmp(key, "TG") == 0)
+				m_tg = (unsigned int)::atoi(value);
+			else if (::strcmp(key, "DstAddress") == 0)
 				m_dstAddress = value;
 			else if (::strcmp(key, "DstPort") == 0)
 				m_dstPort = (unsigned int)::atoi(value);
@@ -219,6 +221,11 @@ bool CConf::read()
 std::string CConf::getCallsign() const
 {
 	return m_callsign;
+}
+
+unsigned int CConf::getTG() const
+{
+	return m_tg;
 }
 
 std::string CConf::getDstAddress() const

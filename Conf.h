@@ -1,7 +1,6 @@
 /*
  *   Copyright (C) 2015,2016,2017 by Jonathan Naylor G4KLX
  *   Copyright (C) 2018 by Andy Uribe CA6JAU
- *   Copyright (C) 2018 by Manuel Sanchez EA7EE
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -32,8 +31,9 @@ public:
 
   bool read();
 
-  // The YSF Network section
+  // The NXDN Network section
   std::string  getCallsign() const;
+  unsigned int getTG() const;
   std::string  getDstAddress() const;
   unsigned int getDstPort() const;
   std::string  getLocalAddress() const;
@@ -81,6 +81,7 @@ public:
 private:
   std::string  m_file;
   std::string  m_callsign;
+  unsigned int m_tg;
   std::string  m_dstAddress;
   unsigned int m_dstPort;
   std::string  m_localAddress;

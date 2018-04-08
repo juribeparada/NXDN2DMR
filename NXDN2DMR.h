@@ -66,6 +66,7 @@ public:
 
 private:
 	std::string      m_callsign;
+	unsigned int     m_nxdnTG;
 	CConf            m_conf;
 	CDMRNetwork*     m_dmrNetwork;
 	CNXDNNetwork*    m_nxdnNetwork;

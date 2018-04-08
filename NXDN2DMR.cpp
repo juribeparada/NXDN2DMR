@@ -32,7 +32,7 @@
 #define DMR_FRAME_PER       55U
 #define NXDN_FRAME_PER      75U
 
-#define NXDNGW_DSTID        20U
+#define NXDNGW_DSTID_DEF    20U
 
 #if defined(_WIN32) || defined(_WIN64)
 const char* DEFAULT_INI_FILE = "NXDN2DMR.ini";
@@ -196,6 +196,7 @@ int CNXDN2DMR::run()
 #endif
 
 	m_callsign = m_conf.getCallsign();
+	m_nxdnTG = m_conf.getTG();
 
 	bool debug               = m_conf.getDMRNetworkDebug();
 	in_addr dstAddress       = CUDPSocket::lookup(m_conf.getDstAddress());
@@ -203,7 +204,7 @@ int CNXDN2DMR::run()
 	std::string localAddress = m_conf.getLocalAddress();
 	unsigned int localPort   = m_conf.getLocalPort();
 
-	m_nxdnNetwork = new CNXDNNetwork(localAddress, localPort, debug);
+	m_nxdnNetwork = new CNXDNNetwork(localAddress, localPort, m_callsign, debug);
 	m_nxdnNetwork->setDestination(dstAddress, dstPort);
 
 	ret = m_nxdnNetwork->open();
@@ -219,7 +220,7 @@ int CNXDN2DMR::run()
 		::LogFinalise();
 		return 1;
 	}
-	
+
 	std::string lookupFile  = m_conf.getDMRIdLookupFile();
 	unsigned int reloadTime = m_conf.getDMRIdLookupTime();
 
@@ -232,6 +233,7 @@ int CNXDN2DMR::run()
 		m_dmrflco = FLCO_GROUP;
 
 	CTimer networkWatchdog(100U, 0U, 1500U);
+	CTimer pollTimer(1000U, 5U);
 
 	std::string name = m_conf.getDescription();
 
@@ -241,9 +243,17 @@ int CNXDN2DMR::run()
 	stopWatch.start();
 	nxdnWatch.start();
 	dmrWatch.start();
+	pollTimer.start();
 
 	unsigned char nxdn_cnt = 0;
 	unsigned char dmr_cnt = 0;
+
+	// Link to reflector at startup (not NXDNGateway operation)
+	if (m_nxdnTG != NXDNGW_DSTID_DEF) {
+		m_nxdnNetwork->writePoll(m_nxdnTG);
+		m_nxdnNetwork->writePoll(m_nxdnTG);
+		m_nxdnNetwork->writePoll(m_nxdnTG);
+	}
 
 	LogMessage("Starting NXDN2DMR-%s", VERSION);
 
@@ -291,7 +301,7 @@ int CNXDN2DMR::run()
 					}
 				}
 			}
-			else if (::memcmp(buffer, "NXDNP", 5U) == 0 && len == 17U) {
+			else if (::memcmp(buffer, "NXDNP", 5U) == 0 && len == 17U && m_nxdnTG == NXDNGW_DSTID_DEF) {
 					// Return the poll
 					m_nxdnNetwork->write(buffer, len);
 			}
@@ -322,7 +332,7 @@ int CNXDN2DMR::run()
 				slotType.setColorCode(m_colorcode);
 				slotType.setDataType(DT_VOICE_LC_HEADER);
 				slotType.getData(m_dmrFrame);
-	
+
 				// Full LC
 				CDMRLC dmrLC = CDMRLC(m_dmrflco, m_srcid, m_dstid);
 				CDMRFullLC fullLC;
@@ -372,7 +382,7 @@ int CNXDN2DMR::run()
 						emb.getData(m_dmrFrame);
 
 						rx_dmrdata.setData(m_dmrFrame);
-				
+
 						//CUtils::dump(1U, "DMR data:", m_dmrFrame, 33U);
 						m_dmrNetwork->write(rx_dmrdata);
 
@@ -399,12 +409,12 @@ int CNXDN2DMR::run()
 				slotType.setColorCode(m_colorcode);
 				slotType.setDataType(DT_TERMINATOR_WITH_LC);
 				slotType.getData(m_dmrFrame);
-	
+
 				// Full LC
 				CDMRLC dmrLC = CDMRLC(m_dmrflco, m_srcid, m_dstid);
 				CDMRFullLC fullLC;
 				fullLC.encode(dmrLC, m_dmrFrame, DT_TERMINATOR_WITH_LC);
-				
+
 				rx_dmrdata.setData(m_dmrFrame);
 				//CUtils::dump(1U, "DMR data:", m_dmrFrame, 33U);
 				m_dmrNetwork->write(rx_dmrdata);
@@ -557,7 +567,7 @@ int CNXDN2DMR::run()
 				::memcpy(m_nxdnFrame + 5U, layer3data, 14U);
 				::memcpy(m_nxdnFrame + 5U + 14U, layer3data, 14U);
 
-				m_nxdnNetwork->write(m_nxdnFrame, netSrc, NXDNGW_DSTID, true);
+				m_nxdnNetwork->write(m_nxdnFrame, netSrc, m_nxdnTG, true);
 
 				nxdnWatch.start();
 			}
@@ -587,7 +597,7 @@ int CNXDN2DMR::run()
 				::memcpy(m_nxdnFrame + 5U, layer3data, 14U);
 				::memcpy(m_nxdnFrame + 5U + 14U, layer3data, 14U);
 
-				m_nxdnNetwork->write(m_nxdnFrame, netSrc, NXDNGW_DSTID, true);
+				m_nxdnNetwork->write(m_nxdnFrame, netSrc, m_nxdnTG, true);
 
 				nxdn_cnt = 0U;
 			}
@@ -636,7 +646,7 @@ int CNXDN2DMR::run()
 				sacch.getRaw(m_nxdnFrame + 1U);
 
 				// Send data to MMDVMHost
-				m_nxdnNetwork->write(m_nxdnFrame, netSrc, NXDNGW_DSTID, true);
+				m_nxdnNetwork->write(m_nxdnFrame, netSrc, m_nxdnTG, true);
 				
 				nxdn_cnt++;
 				nxdnWatch.start();
@@ -647,8 +657,21 @@ int CNXDN2DMR::run()
 
 		m_dmrNetwork->clock(ms);
 
+		pollTimer.clock(ms);
+		if (pollTimer.isRunning() && pollTimer.hasExpired() && m_nxdnTG != NXDNGW_DSTID_DEF) {
+			m_nxdnNetwork->writePoll(m_nxdnTG);
+			pollTimer.start();
+		}
+
 		if (ms < 5U)
 			CThread::sleep(5U);
+	}
+
+	// Unlink reflector at exit (not NXDNGateway operation)
+	if (m_nxdnTG != NXDNGW_DSTID_DEF) {
+		m_nxdnNetwork->writeUnlink(m_nxdnTG);
+		m_nxdnNetwork->writeUnlink(m_nxdnTG);
+		m_nxdnNetwork->writeUnlink(m_nxdnTG);
 	}
 
 	m_nxdnNetwork->close();
