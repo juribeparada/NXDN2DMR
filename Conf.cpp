@@ -56,6 +56,9 @@ m_location(),
 m_description(),
 m_url(),
 m_dmrId(0U),
+m_dmrXLXFile(),
+m_dmrXLXModule(),
+m_dmrXLXReflector(950U),
 m_dmrDstId(9990U),
 m_dmrPC(true),
 m_dmrNetworkAddress(),
@@ -136,7 +139,7 @@ bool CConf::read()
 				// Convert the callsign to upper case
 				for (unsigned int i = 0U; value[i] != 0; i++)
 					value[i] = ::toupper(value[i]);
-			m_callsign = value;
+				m_callsign = value;
 			} else if (::strcmp(key, "TG") == 0)
 				m_tg = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "DstAddress") == 0)
@@ -171,6 +174,15 @@ bool CConf::read()
 		} else if (section == SECTION_DMR_NETWORK) {
 			if (::strcmp(key, "Id") == 0)
 				m_dmrId = (unsigned int)::atoi(value);
+			if (::strcmp(key, "XLXFile") == 0)
+				m_dmrXLXFile = value;
+			else if (::strcmp(key, "XLXModule") == 0) {
+				for (unsigned int i = 0U; value[i] != 0; i++)
+					value[i] = ::toupper(value[i]);
+				m_dmrXLXModule = value;
+			}
+			else if (::strcmp(key, "XLXReflector") == 0)
+				m_dmrXLXReflector = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "StartupDstId") == 0)
 				m_dmrDstId = (unsigned int)::atoi(value);
 			else if (::strcmp(key, "StartupPC") == 0)
@@ -301,6 +313,21 @@ std::string CConf::getURL() const
 unsigned int CConf::getDMRId() const
 {
 	return m_dmrId;
+}
+
+std::string CConf::getDMRXLXFile() const
+{
+	return m_dmrXLXFile;
+}
+
+std::string CConf::getDMRXLXModule() const
+{
+	return m_dmrXLXModule;
+}
+
+unsigned int CConf::getDMRXLXReflector() const
+{
+	return m_dmrXLXReflector;
 }
 
 unsigned int CConf::getDMRDstId() const

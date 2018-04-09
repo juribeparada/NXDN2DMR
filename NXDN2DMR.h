@@ -36,6 +36,7 @@
 #include "NXDNLookup.h"
 #include "NXDNSACCH.h"
 #include "NXDNNetwork.h"
+#include "Reflectors.h"
 #include "UDPSocket.h"
 #include "StopWatch.h"
 #include "Version.h"
@@ -91,10 +92,13 @@ private:
 	FLCO             m_dmrflco;
 	bool             m_dmrinfo;
 	bool             m_nxdninfo;
+	std::string      m_xlxmodule;
+	bool             m_xlxConnected;
+	CReflectors*     m_xlxReflectors;
 
 	bool createDMRNetwork();
 	unsigned int truncID(unsigned int id);
-	
+	void writeXLXLink(unsigned int srcId, unsigned int dstId, CDMRNetwork* network);
 };
 
 #endif

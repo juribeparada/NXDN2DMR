@@ -56,6 +56,8 @@ public:
 
 	void reset(unsigned int slotNo);
 
+	bool isConnected() const;
+
 	void close();
 
 private: 

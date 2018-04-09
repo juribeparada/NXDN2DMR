@@ -34,6 +34,9 @@
 
 #define NXDNGW_DSTID_DEF    20U
 
+#define XLX_SLOT            2U
+#define COLOR_CODE          3U
+
 #if defined(_WIN32) || defined(_WIN64)
 const char* DEFAULT_INI_FILE = "NXDN2DMR.ini";
 #else
@@ -104,7 +107,9 @@ m_nxdnDst(0U),
 m_dmrLastDT(0U),
 m_dmrFrames(0U),
 m_nxdnFrames(0U),
-m_dmrinfo(false)
+m_dmrinfo(false),
+m_xlxmodule(),
+m_xlxConnected(false)
 {
 	::memset(m_nxdnFrame, 0U, 200U);
 	::memset(m_dmrFrame, 0U, 50U);
@@ -204,6 +209,10 @@ int CNXDN2DMR::run()
 	std::string localAddress = m_conf.getLocalAddress();
 	unsigned int localPort   = m_conf.getLocalPort();
 
+	std::string fileName    = m_conf.getDMRXLXFile();
+	m_xlxReflectors = new CReflectors(fileName, 60U);
+	m_xlxReflectors->load();
+
 	m_nxdnNetwork = new CNXDNNetwork(localAddress, localPort, m_callsign, debug);
 	m_nxdnNetwork->setDestination(dstAddress, dstPort);
 
@@ -262,6 +271,12 @@ int CNXDN2DMR::run()
 
 		CDMRData tx_dmrdata;
 		unsigned int ms = stopWatch.elapsed();
+
+		if (m_dmrNetwork->isConnected() && !m_xlxmodule.empty() && !m_xlxConnected) {
+			writeXLXLink(m_srcid, m_dstid, m_dmrNetwork);
+			LogMessage("Linking to XLX reflector module %s", m_xlxmodule.c_str());
+			m_xlxConnected = true;
+		}
 
 		unsigned int len = 0;
 		while ((len = m_nxdnNetwork->read(buffer)) > 0U) {
@@ -657,6 +672,9 @@ int CNXDN2DMR::run()
 
 		m_dmrNetwork->clock(ms);
 
+		if (m_xlxReflectors != NULL)
+			m_xlxReflectors->clock(ms);
+
 		pollTimer.clock(ms);
 		if (pollTimer.isRunning() && pollTimer.hasExpired() && m_nxdnTG != NXDNGW_DSTID_DEF) {
 			m_nxdnNetwork->writePoll(m_nxdnTG);
@@ -678,6 +696,9 @@ int CNXDN2DMR::run()
 	m_dmrNetwork->close();
 	delete m_dmrNetwork;
 	delete m_nxdnNetwork;
+
+	if (m_xlxReflectors != NULL)
+		delete m_xlxReflectors;
 
 	::LogFinalise();
 
@@ -702,21 +723,37 @@ unsigned int CNXDN2DMR::truncID(unsigned int id)
 
 bool CNXDN2DMR::createDMRNetwork()
 {
-	std::string address  = m_conf.getDMRNetworkAddress();
-	unsigned int port    = m_conf.getDMRNetworkPort();
-	unsigned int local   = m_conf.getDMRNetworkLocal();
-	std::string password = m_conf.getDMRNetworkPassword();
-	bool debug           = m_conf.getDMRNetworkDebug();
-	unsigned int jitter  = m_conf.getDMRNetworkJitter();
-	bool slot1           = false;
-	bool slot2           = true;
-	bool duplex          = false;
-	HW_TYPE hwType       = HWT_MMDVM;
+	std::string address   = m_conf.getDMRNetworkAddress();
+	m_xlxmodule           = m_conf.getDMRXLXModule();
+	unsigned int xlxrefl  = m_conf.getDMRXLXReflector();
+	unsigned int port     = m_conf.getDMRNetworkPort();
+	unsigned int local    = m_conf.getDMRNetworkLocal();
+	std::string password  = m_conf.getDMRNetworkPassword();
+	bool debug            = m_conf.getDMRNetworkDebug();
+	unsigned int jitter   = m_conf.getDMRNetworkJitter();
+	bool slot1            = false;
+	bool slot2            = true;
+	bool duplex           = false;
+	HW_TYPE hwType        = HWT_MMDVM;
 
 	m_srcHS = m_conf.getDMRId();
 	m_colorcode = 1U;
-	m_dstid = m_conf.getDMRDstId();
-	m_dmrpc = m_conf.getDMRPC();
+
+	if (m_xlxmodule.empty()) {
+		m_dstid = m_conf.getDMRDstId();
+		m_dmrpc = m_conf.getDMRPC();
+	}
+	else {
+		const char *xlxmod = m_xlxmodule.c_str();
+		m_dstid = 4000 + xlxmod[0] - 64;
+		m_dmrpc = 0;
+
+		CReflector* reflector = m_xlxReflectors->find(xlxrefl);
+		if (reflector == NULL)
+			return false;
+		
+		address = reflector->m_address;
+	}
 
 	if (m_srcHS > 99999999U)
 		m_defsrcid = m_srcHS / 100U;
@@ -730,8 +767,14 @@ bool CNXDN2DMR::createDMRNetwork()
 	LogMessage("DMR Network Parameters");
 	LogMessage("    ID: %u", m_srcHS);
 	LogMessage("    Default SrcID: %u", m_defsrcid);
-	LogMessage("    Startup DstID: %s%u", m_dmrpc ? "" : "TG ", m_dstid);
-	LogMessage("    Address: %s", address.c_str());
+	if (!m_xlxmodule.empty()) {
+		LogMessage("    XLX Reflector: %d", xlxrefl);
+		LogMessage("    XLX Module: %s (%d)", m_xlxmodule.c_str(), m_dstid);
+	}
+	else {
+		LogMessage("    Startup DstID: %s%u", m_dmrpc ? "" : "TG ", m_dstid);
+		LogMessage("    Address: %s", address.c_str());
+	}
 	LogMessage("    Port: %u", port);
 	if (local > 0U)
 		LogMessage("    Local: %u", local);
@@ -782,3 +825,59 @@ bool CNXDN2DMR::createDMRNetwork()
 
 	return true;
 }
+
+void CNXDN2DMR::writeXLXLink(unsigned int srcId, unsigned int dstId, CDMRNetwork* network)
+{
+	assert(network != NULL);
+
+	unsigned int streamId = ::rand() + 1U;
+
+	CDMRData data;
+
+	data.setSlotNo(XLX_SLOT);
+	data.setFLCO(FLCO_USER_USER);
+	data.setSrcId(srcId);
+	data.setDstId(dstId);
+	data.setDataType(DT_VOICE_LC_HEADER);
+	data.setN(0U);
+	data.setStreamId(streamId);
+
+	unsigned char buffer[DMR_FRAME_LENGTH_BYTES];
+
+	CDMRLC lc;
+	lc.setSrcId(srcId);
+	lc.setDstId(dstId);
+	lc.setFLCO(FLCO_USER_USER);
+
+	CDMRFullLC fullLC;
+	fullLC.encode(lc, buffer, DT_VOICE_LC_HEADER);
+
+	CDMRSlotType slotType;
+	slotType.setColorCode(COLOR_CODE);
+	slotType.setDataType(DT_VOICE_LC_HEADER);
+	slotType.getData(buffer);
+
+	CSync::addDMRDataSync(buffer, true);
+
+	data.setData(buffer);
+
+	for (unsigned int i = 0U; i < 3U; i++) {
+		data.setSeqNo(i);
+		network->write(data);
+	}
+
+	data.setDataType(DT_TERMINATOR_WITH_LC);
+
+	fullLC.encode(lc, buffer, DT_TERMINATOR_WITH_LC);
+
+	slotType.setDataType(DT_TERMINATOR_WITH_LC);
+	slotType.getData(buffer);
+
+	data.setData(buffer);
+
+	for (unsigned int i = 0U; i < 2U; i++) {
+		data.setSeqNo(i + 3U);
+		network->write(data);
+	}
+}
+

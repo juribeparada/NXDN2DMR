@@ -32,7 +32,8 @@ m_seqNo(data.m_seqNo),
 m_missing(data.m_missing),
 m_n(data.m_n),
 m_ber(data.m_ber),
-m_rssi(data.m_rssi)
+m_rssi(data.m_rssi),
+m_streamId(data.m_streamId)
 {
 	m_data = new unsigned char[2U * DMR_FRAME_LENGTH_BYTES];
 	::memcpy(m_data, data.m_data, 2U * DMR_FRAME_LENGTH_BYTES);
@@ -49,7 +50,8 @@ m_seqNo(0U),
 m_missing(false),
 m_n(0U),
 m_ber(0U),
-m_rssi(0U)
+m_rssi(0U),
+m_streamId(0U)
 {
 	m_data = new unsigned char[2U * DMR_FRAME_LENGTH_BYTES];
 }
@@ -74,6 +76,7 @@ CDMRData& CDMRData::operator=(const CDMRData& data)
 		m_n        = data.m_n;
 		m_ber      = data.m_ber;
 		m_rssi     = data.m_rssi;
+		m_streamId = data.m_streamId;
 	}
 
 	return *this;
@@ -195,4 +198,14 @@ void CDMRData::setData(const unsigned char* buffer)
 	assert(buffer != NULL);
 
 	::memcpy(m_data, buffer, DMR_FRAME_LENGTH_BYTES);
+}
+
+unsigned int CDMRData::getStreamId() const
+{
+	return m_streamId;
+}
+
+void CDMRData::setStreamId(unsigned int id)
+{
+	m_streamId = id;
 }

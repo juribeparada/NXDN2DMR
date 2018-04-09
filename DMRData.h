@@ -57,6 +57,9 @@ public:
 	void setData(const unsigned char* buffer);
 	unsigned int getData(unsigned char* buffer) const;
 
+	void setStreamId(unsigned int id);
+	unsigned int getStreamId() const;
+
 private:
 	unsigned int   m_slotNo;
 	unsigned char* m_data;
@@ -69,6 +72,7 @@ private:
 	unsigned char  m_n;
 	unsigned char  m_ber;
 	unsigned char  m_rssi;
+	unsigned int   m_streamId;
 };
 
 #endif

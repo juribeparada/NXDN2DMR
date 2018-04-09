@@ -485,6 +485,11 @@ void CDMRNetwork::reset(unsigned int slotNo)
 	}
 }
 
+bool CDMRNetwork::isConnected() const
+{
+	return m_status == RUNNING;
+}
+
 void CDMRNetwork::receiveData(const unsigned char* data, unsigned int length)
 {
 	assert(data != NULL);
