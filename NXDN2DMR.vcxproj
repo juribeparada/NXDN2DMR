@@ -168,6 +168,7 @@
     <ClCompile Include="NXDNNetwork.cpp" />
     <ClCompile Include="NXDNSACCH.cpp" />
     <ClCompile Include="QR1676.cpp" />
+    <ClCompile Include="Reflectors.cpp" />
     <ClCompile Include="RS129.cpp" />
     <ClCompile Include="SHA256.cpp" />
     <ClCompile Include="StopWatch.cpp" />
@@ -209,6 +210,7 @@
     <ClInclude Include="NXDNSACCH.h" />
     <ClInclude Include="QR1676.h" />
     <ClInclude Include="RingBuffer.h" />
+    <ClInclude Include="Reflectors.h" />
     <ClInclude Include="RS129.h" />
     <ClInclude Include="SHA256.h" />
     <ClInclude Include="StopWatch.h" />
