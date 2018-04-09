@@ -174,7 +174,7 @@ bool CConf::read()
 		} else if (section == SECTION_DMR_NETWORK) {
 			if (::strcmp(key, "Id") == 0)
 				m_dmrId = (unsigned int)::atoi(value);
-			if (::strcmp(key, "XLXFile") == 0)
+			else if (::strcmp(key, "XLXFile") == 0)
 				m_dmrXLXFile = value;
 			else if (::strcmp(key, "XLXModule") == 0) {
 				for (unsigned int i = 0U; value[i] != 0; i++)
