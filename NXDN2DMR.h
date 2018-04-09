@@ -95,6 +95,7 @@ private:
 	std::string      m_xlxmodule;
 	bool             m_xlxConnected;
 	CReflectors*     m_xlxReflectors;
+	unsigned int     m_xlxrefl;
 
 	bool createDMRNetwork();
 	unsigned int truncID(unsigned int id);

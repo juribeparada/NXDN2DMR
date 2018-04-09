@@ -35,7 +35,7 @@
 #define NXDNGW_DSTID_DEF    20U
 
 #define XLX_SLOT            2U
-#define COLOR_CODE          3U
+#define XLX_COLOR_CODE      3U
 
 #if defined(_WIN32) || defined(_WIN64)
 const char* DEFAULT_INI_FILE = "NXDN2DMR.ini";
@@ -274,7 +274,7 @@ int CNXDN2DMR::run()
 
 		if (m_dmrNetwork->isConnected() && !m_xlxmodule.empty() && !m_xlxConnected) {
 			writeXLXLink(m_srcid, m_dstid, m_dmrNetwork);
-			LogMessage("Linking to XLX reflector module %s", m_xlxmodule.c_str());
+			LogMessage("XLX, Linking to reflector XLX%03u, module %s", m_xlxrefl, m_xlxmodule.c_str());
 			m_xlxConnected = true;
 		}
 
@@ -725,7 +725,7 @@ bool CNXDN2DMR::createDMRNetwork()
 {
 	std::string address   = m_conf.getDMRNetworkAddress();
 	m_xlxmodule           = m_conf.getDMRXLXModule();
-	unsigned int xlxrefl  = m_conf.getDMRXLXReflector();
+	m_xlxrefl             = m_conf.getDMRXLXReflector();
 	unsigned int port     = m_conf.getDMRNetworkPort();
 	unsigned int local    = m_conf.getDMRNetworkLocal();
 	std::string password  = m_conf.getDMRNetworkPassword();
@@ -748,7 +748,7 @@ bool CNXDN2DMR::createDMRNetwork()
 		m_dstid = 4000 + xlxmod[0] - 64;
 		m_dmrpc = 0;
 
-		CReflector* reflector = m_xlxReflectors->find(xlxrefl);
+		CReflector* reflector = m_xlxReflectors->find(m_xlxrefl);
 		if (reflector == NULL)
 			return false;
 		
@@ -768,7 +768,7 @@ bool CNXDN2DMR::createDMRNetwork()
 	LogMessage("    ID: %u", m_srcHS);
 	LogMessage("    Default SrcID: %u", m_defsrcid);
 	if (!m_xlxmodule.empty()) {
-		LogMessage("    XLX Reflector: %d", xlxrefl);
+		LogMessage("    XLX Reflector: %d", m_xlxrefl);
 		LogMessage("    XLX Module: %s (%d)", m_xlxmodule.c_str(), m_dstid);
 	}
 	else {
@@ -853,7 +853,7 @@ void CNXDN2DMR::writeXLXLink(unsigned int srcId, unsigned int dstId, CDMRNetwork
 	fullLC.encode(lc, buffer, DT_VOICE_LC_HEADER);
 
 	CDMRSlotType slotType;
-	slotType.setColorCode(COLOR_CODE);
+	slotType.setColorCode(XLX_COLOR_CODE);
 	slotType.setDataType(DT_VOICE_LC_HEADER);
 	slotType.getData(buffer);
 
