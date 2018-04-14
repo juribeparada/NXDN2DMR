@@ -568,7 +568,6 @@ int CNXDN2DMR::run()
 			if(nxdnFrameType == TAG_HEADER) {
 				nxdn_cnt = 0U;
 				m_nxdnSrc = findNXDNID(m_dmrSrc);
-				m_nxdnDst = findNXDNID(m_dmrDst);
 
 				CNXDNLICH lich;
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
@@ -587,7 +586,7 @@ int CNXDN2DMR::run()
 				CNXDNLayer3 layer3;
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_VCALL);
 				layer3.setSourceUnitId(m_nxdnSrc & 0xFFFF);
-				layer3.setDestinationGroupId(m_nxdnDst & 0xFFFF);
+				layer3.setDestinationGroupId(m_nxdnTG & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
 				layer3.getData(layer3data);
@@ -617,7 +616,7 @@ int CNXDN2DMR::run()
 				CNXDNLayer3 layer3;
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_TX_REL);
 				layer3.setSourceUnitId(m_nxdnSrc & 0xFFFF);
-				layer3.setDestinationGroupId(m_nxdnDst & 0xFFFF);
+				layer3.setDestinationGroupId(m_nxdnTG & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
 				layer3.getData(layer3data);
@@ -643,7 +642,7 @@ int CNXDN2DMR::run()
 
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_VCALL);
 				layer3.setSourceUnitId(m_nxdnSrc & 0xFFFF);
-				layer3.setDestinationGroupId(m_nxdnDst & 0xFFFF);
+				layer3.setDestinationGroupId(m_nxdnTG & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
 
