@@ -77,11 +77,10 @@ private:
 	unsigned int     m_colorcode;
 	unsigned int     m_srcHS;
 	unsigned int     m_defsrcid;
-	unsigned int     m_srcid;
 	unsigned int     m_dstid;
 	bool             m_dmrpc;
-	unsigned int     m_netSrc;
-	unsigned int     m_netDst;
+	unsigned int     m_dmrSrc;
+	unsigned int     m_dmrDst;
 	unsigned int     m_nxdnSrc;
 	unsigned int     m_nxdnDst;
 	unsigned char    m_dmrLastDT;
@@ -99,6 +98,8 @@ private:
 	unsigned int     m_xlxrefl;
 
 	bool createDMRNetwork();
+	unsigned int findNXDNID(unsigned int dmrid);
+	unsigned int findDMRID(unsigned int nxdnid);
 	unsigned int truncID(unsigned int id);
 	void writeXLXLink(unsigned int srcId, unsigned int dstId, CDMRNetwork* network);
 };

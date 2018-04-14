@@ -100,8 +100,8 @@ CNXDN2DMR::CNXDN2DMR(const std::string& configFile) :
 m_callsign(),
 m_conf(configFile),
 m_dmrNetwork(NULL),
-m_netSrc(0U),
-m_netDst(0U),
+m_dmrSrc(0U),
+m_dmrDst(0U),
 m_nxdnSrc(0U),
 m_nxdnDst(0U),
 m_dmrLastDT(0U),
@@ -279,7 +279,7 @@ int CNXDN2DMR::run()
 		unsigned int ms = stopWatch.elapsed();
 
 		if (m_dmrNetwork->isConnected() && !m_xlxmodule.empty() && !m_xlxConnected) {
-			writeXLXLink(m_srcid, m_dstid, m_dmrNetwork);
+			writeXLXLink(m_defsrcid, m_dstid, m_dmrNetwork);
 			LogMessage("XLX, Linking to reflector XLX%03u, module %s", m_xlxrefl, m_xlxmodule.c_str());
 			m_xlxConnected = true;
 		}
@@ -306,7 +306,7 @@ int CNXDN2DMR::run()
 					} else {
 						std::string netSrc = m_nxdnlookup->findCS(m_nxdnSrc);
 						std::string netDst = m_nxdnlookup->findCS(m_nxdnDst);
-						LogMessage("Received NXDN audio from %s to %s%s", netSrc.c_str(), grp ? "TG " : "", netDst.c_str());
+						LogMessage("Received NXDN header from %s to %s%s", netSrc.c_str(), grp ? "TG " : "", netDst.c_str());
 
 						m_conv.putNXDNHeader();
 						m_nxdnFrames = 0U;
@@ -317,7 +317,8 @@ int CNXDN2DMR::run()
 						if (!m_nxdninfo) {
 							std::string netSrc = m_nxdnlookup->findCS(m_nxdnSrc);
 							std::string netDst = m_nxdnlookup->findCS(m_nxdnDst);
-							LogMessage("Received NXDN audio from %s to %s%s", netSrc.c_str(), grp ? "TG " : "", netDst.c_str());
+							LogMessage("Received NXDN late entry from %s to %s%s", netSrc.c_str(), grp ? "TG " : "", netDst.c_str());
+							m_conv.putNXDNHeader();
 							m_nxdninfo = true;
 						}
 
@@ -338,9 +339,10 @@ int CNXDN2DMR::run()
 			if(dmrFrameType == TAG_HEADER) {
 				CDMRData rx_dmrdata;
 				dmr_cnt = 0U;
+				m_dmrSrc = findDMRID(m_nxdnSrc);
 
 				rx_dmrdata.setSlotNo(2U);
-				rx_dmrdata.setSrcId(m_srcid);
+				rx_dmrdata.setSrcId(m_dmrSrc);
 				rx_dmrdata.setDstId(m_dstid);
 				rx_dmrdata.setFLCO(m_dmrflco);
 				rx_dmrdata.setN(0U);
@@ -359,7 +361,7 @@ int CNXDN2DMR::run()
 				slotType.getData(m_dmrFrame);
 
 				// Full LC
-				CDMRLC dmrLC = CDMRLC(m_dmrflco, m_srcid, m_dstid);
+				CDMRLC dmrLC = CDMRLC(m_dmrflco, m_dmrSrc, m_dstid);
 				CDMRFullLC fullLC;
 				fullLC.encode(dmrLC, m_dmrFrame, DT_VOICE_LC_HEADER);
 				m_EmbeddedLC.setLC(dmrLC);
@@ -387,7 +389,7 @@ int CNXDN2DMR::run()
 						CDMRData rx_dmrdata;
 
 						rx_dmrdata.setSlotNo(2U);
-						rx_dmrdata.setSrcId(m_srcid);
+						rx_dmrdata.setSrcId(m_dmrSrc);
 						rx_dmrdata.setDstId(m_dstid);
 						rx_dmrdata.setFLCO(m_dmrflco);
 						rx_dmrdata.setN(n_dmr);
@@ -417,7 +419,7 @@ int CNXDN2DMR::run()
 				}
 
 				rx_dmrdata.setSlotNo(2U);
-				rx_dmrdata.setSrcId(m_srcid);
+				rx_dmrdata.setSrcId(m_dmrSrc);
 				rx_dmrdata.setDstId(m_dstid);
 				rx_dmrdata.setFLCO(m_dmrflco);
 				rx_dmrdata.setN(n_dmr);
@@ -436,7 +438,7 @@ int CNXDN2DMR::run()
 				slotType.getData(m_dmrFrame);
 
 				// Full LC
-				CDMRLC dmrLC = CDMRLC(m_dmrflco, m_srcid, m_dstid);
+				CDMRLC dmrLC = CDMRLC(m_dmrflco, m_dmrSrc, m_dstid);
 				CDMRFullLC fullLC;
 				fullLC.encode(dmrLC, m_dmrFrame, DT_TERMINATOR_WITH_LC);
 
@@ -452,7 +454,7 @@ int CNXDN2DMR::run()
 				unsigned int n_dmr = (dmr_cnt - 3U) % 6U;
 
 				rx_dmrdata.setSlotNo(2U);
-				rx_dmrdata.setSrcId(m_srcid);
+				rx_dmrdata.setSrcId(m_dmrSrc);
 				rx_dmrdata.setDstId(m_dstid);
 				rx_dmrdata.setFLCO(m_dmrflco);
 				rx_dmrdata.setN(n_dmr);
@@ -465,7 +467,7 @@ int CNXDN2DMR::run()
 					// Add sync
 					CSync::addDMRAudioSync(m_dmrFrame, 0U);
 					// Prepare Full LC data
-					CDMRLC dmrLC = CDMRLC(m_dmrflco, m_srcid, m_dstid);
+					CDMRLC dmrLC = CDMRLC(m_dmrflco, m_dmrSrc, m_dstid);
 					// Configure the Embedded LC
 					m_EmbeddedLC.setLC(dmrLC);
 				}
@@ -490,8 +492,8 @@ int CNXDN2DMR::run()
 		}
 
 		while (m_dmrNetwork->read(tx_dmrdata) > 0U) {
-			m_netSrc = tx_dmrdata.getSrcId();
-			m_netDst = tx_dmrdata.getDstId();
+			m_dmrSrc = tx_dmrdata.getSrcId();
+			m_dmrDst = tx_dmrdata.getDstId();
 			
 			FLCO netflco = tx_dmrdata.getFLCO();
 			unsigned char DataType = tx_dmrdata.getDataType();
@@ -510,11 +512,11 @@ int CNXDN2DMR::run()
 				}
 
 				if((DataType == DT_VOICE_LC_HEADER) && (DataType != m_dmrLastDT)) {
-					std::string netSrc = m_dmrlookup->findCS(m_netSrc);
-					std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_dmrlookup->findCS(m_netDst);
+					std::string netSrc = m_dmrlookup->findCS(m_dmrSrc);
+					std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_dmrlookup->findCS(m_dmrDst);
 
 					m_conv.putDMRHeader();
-					LogMessage("DMR audio received from %s to %s", netSrc.c_str(), netDst.c_str());
+					LogMessage("DMR header received from %s to %s", netSrc.c_str(), netDst.c_str());
 
 					m_dmrinfo = true;
 
@@ -534,10 +536,11 @@ int CNXDN2DMR::run()
 					tx_dmrdata.getData(dmr_frame);
 
 					if (!m_dmrinfo) {
-						std::string netSrc = m_dmrlookup->findCS(m_netSrc);
-						std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_dmrlookup->findCS(m_netDst);
+						std::string netSrc = m_dmrlookup->findCS(m_dmrSrc);
+						std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_dmrlookup->findCS(m_dmrDst);
 
-						LogMessage("DMR audio received from %s to %s", netSrc.c_str(), netDst.c_str());
+						m_conv.putDMRHeader();
+						LogMessage("DMR late entry from %s to %s", netSrc.c_str(), netDst.c_str());
 
 						m_dmrinfo = true;
 					}
@@ -561,11 +564,11 @@ int CNXDN2DMR::run()
 
 		if (nxdnWatch.elapsed() > NXDN_FRAME_PER) {
 			unsigned int nxdnFrameType = m_conv.getNXDN(m_nxdnFrame);
-			unsigned int netSrc = truncID(m_netSrc);
-			unsigned int netDst = truncID(m_netDst);
 
 			if(nxdnFrameType == TAG_HEADER) {
 				nxdn_cnt = 0U;
+				m_nxdnSrc = findNXDNID(m_dmrSrc);
+				m_nxdnDst = findNXDNID(m_dmrDst);
 
 				CNXDNLICH lich;
 				lich.setRFCT(NXDN_LICH_RFCT_RDCH);
@@ -583,8 +586,8 @@ int CNXDN2DMR::run()
 				unsigned char layer3data[25U];
 				CNXDNLayer3 layer3;
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_VCALL);
-				layer3.setSourceUnitId(netSrc & 0xFFFF);
-				layer3.setDestinationGroupId(netDst & 0xFFFF);
+				layer3.setSourceUnitId(m_nxdnSrc & 0xFFFF);
+				layer3.setDestinationGroupId(m_nxdnDst & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
 				layer3.getData(layer3data);
@@ -592,7 +595,7 @@ int CNXDN2DMR::run()
 				::memcpy(m_nxdnFrame + 5U, layer3data, 14U);
 				::memcpy(m_nxdnFrame + 5U + 14U, layer3data, 14U);
 
-				m_nxdnNetwork->write(m_nxdnFrame, netSrc, m_nxdnTG, true);
+				m_nxdnNetwork->write(m_nxdnFrame, m_nxdnSrc, m_nxdnTG, true);
 
 				nxdnWatch.start();
 			}
@@ -613,8 +616,8 @@ int CNXDN2DMR::run()
 				unsigned char layer3data[25U];
 				CNXDNLayer3 layer3;
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_TX_REL);
-				layer3.setSourceUnitId(netSrc & 0xFFFF);
-				layer3.setDestinationGroupId(netDst & 0xFFFF);
+				layer3.setSourceUnitId(m_nxdnSrc & 0xFFFF);
+				layer3.setDestinationGroupId(m_nxdnDst & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
 				layer3.getData(layer3data);
@@ -622,7 +625,7 @@ int CNXDN2DMR::run()
 				::memcpy(m_nxdnFrame + 5U, layer3data, 14U);
 				::memcpy(m_nxdnFrame + 5U + 14U, layer3data, 14U);
 
-				m_nxdnNetwork->write(m_nxdnFrame, netSrc, m_nxdnTG, true);
+				m_nxdnNetwork->write(m_nxdnFrame, m_nxdnSrc, m_nxdnTG, true);
 
 				nxdn_cnt = 0U;
 			}
@@ -639,8 +642,8 @@ int CNXDN2DMR::run()
 				unsigned char message[3U];
 
 				layer3.setMessageType(NXDN_MESSAGE_TYPE_VCALL);
-				layer3.setSourceUnitId(netSrc & 0xFFFF);
-				layer3.setDestinationGroupId(netDst & 0xFFFF);
+				layer3.setSourceUnitId(m_nxdnSrc & 0xFFFF);
+				layer3.setDestinationGroupId(m_nxdnDst & 0xFFFF);
 				layer3.setGroup(true);
 				layer3.setDataBlocks(0U);
 
@@ -671,7 +674,7 @@ int CNXDN2DMR::run()
 				sacch.getRaw(m_nxdnFrame + 1U);
 
 				// Send data to MMDVMHost
-				m_nxdnNetwork->write(m_nxdnFrame, netSrc, m_nxdnTG, true);
+				m_nxdnNetwork->write(m_nxdnFrame, m_nxdnSrc, m_nxdnTG, true);
 				
 				nxdn_cnt++;
 				nxdnWatch.start();
@@ -713,6 +716,32 @@ int CNXDN2DMR::run()
 	::LogFinalise();
 
 	return 0;
+}
+
+unsigned int CNXDN2DMR::findNXDNID(unsigned int dmrid)
+{
+	std::string dmrCS = m_dmrlookup->findCS(dmrid);
+	unsigned int nxdnID = m_nxdnlookup->findID(dmrCS);
+
+	if (nxdnID == 0)
+		nxdnID = truncID(dmrid);
+	else
+		LogMessage("NXDN ID of %s: %u", dmrCS.c_str(), nxdnID);
+
+	return nxdnID;
+}
+
+unsigned int CNXDN2DMR::findDMRID(unsigned int nxdnid)
+{
+	std::string nxdnCS = m_nxdnlookup->findCS(nxdnid);
+	unsigned int dmrID = m_dmrlookup->findID(nxdnCS);
+
+	if (dmrID == 0)
+		dmrID = m_defsrcid;
+	else
+		LogMessage("DMR ID of %s: %u", nxdnCS.c_str(), dmrID);
+
+	return dmrID;
 }
 
 unsigned int CNXDN2DMR::truncID(unsigned int id)
@@ -771,8 +800,6 @@ bool CNXDN2DMR::createDMRNetwork()
 		m_defsrcid = m_srcHS / 10U;
 	else
 		m_defsrcid = m_srcHS;
-
-	m_srcid = m_defsrcid;
 	
 	LogMessage("DMR Network Parameters");
 	LogMessage("    ID: %u", m_srcHS);
