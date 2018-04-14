@@ -109,6 +109,8 @@ unsigned int CDMRLookup::findID(std::string cs)
 {
 	unsigned int dmrID;
 
+	m_mutex.lock();
+
 	try {
 		dmrID = m_cstable.at(cs);
 	} catch (...) {
@@ -135,7 +137,7 @@ bool CDMRLookup::load()
 {
 	FILE* fp = ::fopen(m_filename.c_str(), "rt");
 	if (fp == NULL) {
-		LogWarning("Cannot open the Id lookup file - %s", m_filename.c_str());
+		LogWarning("Cannot open the DMR Id lookup file - %s", m_filename.c_str());
 		return false;
 	}
 
@@ -171,7 +173,7 @@ bool CDMRLookup::load()
 	if (size == 0U)
 		return false;
 
-	LogInfo("Loaded %u Ids to the callsign lookup table", size);
+	LogInfo("Loaded %u Ids to the DMR callsign lookup table", size);
 
 	return true;
 }

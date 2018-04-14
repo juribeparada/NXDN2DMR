@@ -71,7 +71,8 @@ private:
 	CConf            m_conf;
 	CDMRNetwork*     m_dmrNetwork;
 	CNXDNNetwork*    m_nxdnNetwork;
-	CDMRLookup*      m_lookup;
+	CDMRLookup*      m_dmrlookup;
+	CNXDNLookup*     m_nxdnlookup;
 	CModeConv        m_conv;
 	unsigned int     m_colorcode;
 	unsigned int     m_srcHS;

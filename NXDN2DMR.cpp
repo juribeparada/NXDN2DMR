@@ -233,8 +233,14 @@ int CNXDN2DMR::run()
 	std::string lookupFile  = m_conf.getDMRIdLookupFile();
 	unsigned int reloadTime = m_conf.getDMRIdLookupTime();
 
-	m_lookup = new CDMRLookup(lookupFile, reloadTime);
-	m_lookup->read();
+	m_dmrlookup = new CDMRLookup(lookupFile, reloadTime);
+	m_dmrlookup->read();
+
+	lookupFile  = m_conf.getNXDNIdLookupFile();
+	reloadTime = m_conf.getNXDNIdLookupTime();
+
+	m_nxdnlookup = new CNXDNLookup(lookupFile, reloadTime);
+	m_nxdnlookup->read();
 
 	if (m_dmrpc)
 		m_dmrflco = FLCO_USER_USER;
@@ -298,7 +304,9 @@ int CNXDN2DMR::run()
 						m_nxdnFrames = 0U;
 						m_nxdninfo = false;
 					} else {
-						LogMessage("Received NXDN audio from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
+						std::string netSrc = m_nxdnlookup->findCS(m_nxdnSrc);
+						std::string netDst = m_nxdnlookup->findCS(m_nxdnDst);
+						LogMessage("Received NXDN audio from %s to %s%s", netSrc.c_str(), grp ? "TG " : "", netDst.c_str());
 
 						m_conv.putNXDNHeader();
 						m_nxdnFrames = 0U;
@@ -307,7 +315,9 @@ int CNXDN2DMR::run()
 				} else {
 					if (opt == NXDN_LICH_STEAL_NONE) {
 						if (!m_nxdninfo) {
-							LogMessage("Received NXDN audio from %d to %s%d", m_nxdnSrc, grp ? "TG " : "", m_nxdnDst);
+							std::string netSrc = m_nxdnlookup->findCS(m_nxdnSrc);
+							std::string netDst = m_nxdnlookup->findCS(m_nxdnDst);
+							LogMessage("Received NXDN audio from %s to %s%s", netSrc.c_str(), grp ? "TG " : "", netDst.c_str());
 							m_nxdninfo = true;
 						}
 
@@ -500,8 +510,8 @@ int CNXDN2DMR::run()
 				}
 
 				if((DataType == DT_VOICE_LC_HEADER) && (DataType != m_dmrLastDT)) {
-					std::string netSrc = m_lookup->findCS(m_netSrc);
-					std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_lookup->findCS(m_netDst);
+					std::string netSrc = m_dmrlookup->findCS(m_netSrc);
+					std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_dmrlookup->findCS(m_netDst);
 
 					m_conv.putDMRHeader();
 					LogMessage("DMR audio received from %s to %s", netSrc.c_str(), netDst.c_str());
@@ -524,8 +534,8 @@ int CNXDN2DMR::run()
 					tx_dmrdata.getData(dmr_frame);
 
 					if (!m_dmrinfo) {
-						std::string netSrc = m_lookup->findCS(m_netSrc);
-						std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_lookup->findCS(m_netDst);
+						std::string netSrc = m_dmrlookup->findCS(m_netSrc);
+						std::string netDst = (netflco == FLCO_GROUP ? "TG " : "") + m_dmrlookup->findCS(m_netDst);
 
 						LogMessage("DMR audio received from %s to %s", netSrc.c_str(), netDst.c_str());
 

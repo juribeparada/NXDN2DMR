@@ -30,6 +30,7 @@ CThread(),
 m_filename(filename),
 m_reloadTime(reloadTime),
 m_table(),
+m_cstable(),
 m_mutex(),
 m_stop(false)
 {
@@ -81,7 +82,7 @@ void CNXDNLookup::stop()
 	wait();
 }
 
-std::string CNXDNLookup::find(unsigned int id)
+std::string CNXDNLookup::findCS(unsigned int id)
 {
 	std::string callsign;
 
@@ -101,6 +102,23 @@ std::string CNXDNLookup::find(unsigned int id)
 	m_mutex.unlock();
 
 	return callsign;
+}
+
+unsigned int CNXDNLookup::findID(std::string cs)
+{
+	unsigned int nxdnID;
+
+	m_mutex.lock();
+
+	try {
+		nxdnID = m_cstable.at(cs);
+	} catch (...) {
+		nxdnID = 0U;
+	}
+
+	m_mutex.unlock();
+
+	return nxdnID;
 }
 
 bool CNXDNLookup::exists(unsigned int id)
@@ -126,6 +144,7 @@ bool CNXDNLookup::load()
 
 	// Remove the old entries
 	m_table.clear();
+	m_cstable.clear();
 
 	char buffer[100U];
 	while (::fgets(buffer, 100U, fp) != NULL) {
@@ -142,6 +161,7 @@ bool CNXDNLookup::load()
 					*p = ::toupper(*p);
 
 				m_table[id] = std::string(p2);
+				m_cstable[p2] = id;
 			}
 		}
 	}

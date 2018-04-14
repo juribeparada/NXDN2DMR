@@ -34,7 +34,8 @@ public:
 
 	virtual void entry();
 
-	std::string find(unsigned int id);
+	std::string findCS(unsigned int id);
+	unsigned int findID(std::string cs);
 
 	bool exists(unsigned int id);
 
@@ -44,6 +45,7 @@ private:
 	std::string                                   m_filename;
 	unsigned int                                  m_reloadTime;
 	std::unordered_map<unsigned int, std::string> m_table;
+	std::unordered_map<std::string, unsigned int> m_cstable;
 	CMutex                                        m_mutex;
 	bool                                          m_stop;
 
