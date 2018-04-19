@@ -102,12 +102,12 @@ void CNXDNLayer3::setDestinationGroupId(unsigned short dst)
 
 bool CNXDNLayer3::getIsGroup() const
 {
-	return (m_data[2U] & 0x80U) != 0x80U;
+	return (m_data[2U] & 0x20U) != 0x20U;
 }
 
 void CNXDNLayer3::setGroup(bool grp)
 {
-	m_data[2U] |= grp ? 0x80U : 0x00U;
+	m_data[2U] |= grp ? 0x20U : 0x20U;
 }
 
 unsigned char CNXDNLayer3::getDataBlocks() const
