@@ -102,7 +102,7 @@ void CNXDNLayer3::setDestinationGroupId(unsigned short dst)
 
 bool CNXDNLayer3::getIsGroup() const
 {
-	return (m_data[2U] & 0x20U) != 0x20U;
+	return (m_data[2U] & 0x80U) != 0x80U;
 }
 
 void CNXDNLayer3::setGroup(bool grp)
