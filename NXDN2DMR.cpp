@@ -747,7 +747,7 @@ unsigned int CNXDN2DMR::truncID(unsigned int id)
 {
 	char temp[20];
 
-	snprintf(temp, 8, "%0.7d", id);
+	snprintf(temp, 8, "%07d", id);
 	unsigned int newid = atoi(temp + 2);
 
 	if (newid > 65519)
