@@ -1,3 +1,7 @@
+# Note
+
+This repository will not be updated. Please see the new repository for cross-mode conversion tools: [MMDVM_CM](https://github.com/juribeparada/MMDVM_CM)
+
 # Description
 
 This is the source code of NXDN2DMR, a software for digital voice conversion from NXDN to DMR digital mode, based on Jonathan G4KLX's [MMDVM](https://github.com/g4klx) software.
